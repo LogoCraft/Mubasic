@@ -12,18 +12,24 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #121212;
+            background-color: #000;
             color: #b3b3b3;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
         .container {
-            background-color: #1f1f1f;
+            background-color: #121212;
             border-radius: 1rem;
-            margin: 2rem auto;
-            padding: 1.5rem;
-            max-width: 95%;
-            box-shadow: 0 4px 60px rgba(0,0,0,0.5);
+            margin: 0.5rem auto;
+            padding: 1rem;
+            max-width: 100%;
+            min-height: 100vh;
+        }
+        @media (min-width: 640px) {
+            .container {
+                max-width: 95%;
+                min-height: calc(100vh - 1rem);
+            }
         }
         .song-card {
             background-color: #181818;
@@ -32,21 +38,21 @@
             transition: background-color 0.3s ease, transform 0.2s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
         }
         .song-card:hover {
             background-color: #282828;
             transform: translateY(-5px);
         }
-        .song-card:hover .play-overlay {
-            opacity: 1;
-            transform: translateY(0);
-        }
         .play-overlay {
             position: absolute;
             bottom: 1.5rem;
             right: 1.5rem;
-            width: 3.5rem;
-            height: 3.5rem;
+            width: 3rem;
+            height: 3rem;
             background-color: #1db954;
             color: #121212;
             border-radius: 50%;
@@ -58,6 +64,10 @@
             transition: opacity 0.3s ease, transform 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             cursor: pointer;
+        }
+        .song-card:hover .play-overlay {
+            opacity: 1;
+            transform: translateY(0);
         }
         .play-overlay:hover {
             transform: scale(1.1) translateY(0);
@@ -74,22 +84,28 @@
         .admin-btn:hover {
             background-color: #1ed760;
         }
-        .tab-btn {
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-weight: 600;
-            transition: color 0.3s ease, background-color 0.3s ease;
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
         }
-        .tab-btn.active {
-            color: white;
-            background-color: #282828;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
-        .player-bar {
-            background-color: #181818;
-            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.4);
-            z-index: 10;
+        .slide-up {
+            animation: slideUp 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
-        /* Style for the scrollbar to match the dark theme */
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .slide-down {
+            animation: slideDown 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(0); }
+            to { transform: translateY(100%); }
+        }
+        /* Scrollbar stilini koyu temaya göre ayarlar */
         ::-webkit-scrollbar {
             width: 12px;
         }
@@ -104,12 +120,21 @@
         ::-webkit-scrollbar-thumb:hover {
             background-color: #6d6d6d;
         }
+        .nav-link {
+            transition: color 0.3s ease;
+        }
+        .nav-link.active {
+            color: #fff;
+        }
+        .nav-link:hover {
+            color: #fff;
+        }
     </style>
 </head>
 <body class="bg-black text-white flex flex-col min-h-screen">
     <main class="flex-1">
-        <div id="app" class="container w-full max-w-6xl p-4 sm:p-8 md:p-12">
-            <!-- Message Box -->
+        <div id="app" class="container w-full">
+            <!-- Mesaj Kutusu -->
             <div id="message-box" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-50">
                 <div class="bg-gray-800 rounded-lg p-6 max-w-sm mx-auto shadow-2xl">
                     <p id="message-text" class="text-white text-center mb-4"></p>
@@ -117,21 +142,59 @@
                 </div>
             </div>
 
-            <!-- Home Screen -->
-            <div id="home-screen" class="space-y-8">
+            <!-- Tam Ekran Müzik Çalar -->
+            <div id="full-screen-player" class="fixed inset-0 bg-black bg-opacity-95 z-40 hidden flex-col items-center justify-center p-8">
+                <button onclick="hideFullScreenPlayer()" class="absolute top-4 left-4 text-white text-2xl p-2 rounded-full hover:bg-gray-800 transition-colors">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="w-full max-w-sm md:max-w-md lg:max-w-lg space-y-8 text-center">
+                    <div class="relative w-full aspect-square bg-gray-700 rounded-lg shadow-lg flex items-center justify-center">
+                        <i class="fas fa-music text-6xl text-gray-500"></i>
+                    </div>
+                    <div>
+                        <h2 id="player-title" class="text-3xl sm:text-4xl font-bold text-white mb-1 truncate">Şarkı Adı</h2>
+                        <p id="player-artist" class="text-xl text-gray-400 truncate">Sanatçı Adı</p>
+                    </div>
+                    <div class="flex justify-center items-center space-x-6">
+                        <button onclick="seekBackward()" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-backward-step text-3xl"></i>
+                        </button>
+                        <button onclick="seekBackward(10)" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-rotate-left text-3xl"></i>
+                        </button>
+                        <button id="full-screen-play-pause" class="bg-white rounded-full w-20 h-20 flex items-center justify-center transition-transform hover:scale-105">
+                            <i id="full-screen-play-icon" class="fas fa-play text-black text-3xl"></i>
+                            <i id="full-screen-pause-icon" class="fas fa-pause text-black text-3xl hidden"></i>
+                        </button>
+                        <button onclick="seekForward(10)" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-rotate-right text-3xl"></i>
+                        </button>
+                        <button onclick="seekForward()" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fas fa-forward-step text-3xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ana Ekran -->
+            <div id="main-content" class="fade-in pb-20">
                 <header class="flex flex-col sm:flex-row justify-between items-center mb-8">
                     <h1 class="text-4xl sm:text-5xl font-extrabold text-white mb-4 sm:mb-0">Mubasic</h1>
+                    <!-- Admin Paneli linki buraya taşındı -->
+                    <a href="#" onclick="showAdminLogin()" class="text-sm text-gray-400 hover:text-white transition-colors font-medium">Admin Paneli</a>
                 </header>
-                
-                <!-- Tab Navigation -->
-                <div class="flex items-center space-x-4 mb-8">
-                    <button id="tab-all-songs" onclick="showTab('all-songs')" class="tab-btn active">Tüm Şarkılar</button>
-                    <button id="tab-favorites" onclick="showTab('favorites')" class="tab-btn">Favoriler</button>
-                    <button id="tab-downloads" onclick="showTab('downloads')" class="tab-btn">İndirilenler</button>
+
+                <!-- Arama Çubuğu -->
+                <div class="mb-8">
+                    <div class="relative">
+                        <input type="text" id="search-input" placeholder="Müzik Ara..." class="w-full p-4 pl-12 rounded-full bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                    </div>
                 </div>
                 
-                <!-- Content Sections -->
-                <div id="content-all-songs" class="tab-content">
+                <!-- İçerik Bölümleri -->
+                <div id="content-home" class="tab-content">
+                    <h2 class="text-2xl font-bold text-white mb-4">Senin İçin</h2>
                     <div id="song-list" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                         <!-- Müzikler buraya JavaScript ile eklenecek -->
                     </div>
@@ -141,6 +204,7 @@
                 </div>
 
                 <div id="content-favorites" class="tab-content hidden">
+                    <h2 class="text-2xl font-bold text-white mb-4">Favorilerin</h2>
                     <div id="favorites-list" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                         <!-- Favori şarkılar buraya eklenecek -->
                     </div>
@@ -150,6 +214,7 @@
                 </div>
 
                 <div id="content-downloads" class="tab-content hidden">
+                    <h2 class="text-2xl font-bold text-white mb-4">İndirilenler</h2>
                     <div id="downloads-list" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                         <!-- İndirilen şarkılar buraya eklenecek -->
                     </div>
@@ -158,79 +223,76 @@
                     </div>
                 </div>
 
-                <!-- Admin link -->
-                <div class="mt-12 text-center">
-                    <button onclick="showAdminLogin()" class="text-gray-400 hover:text-white transition-colors text-sm underline">Yönetici Girişi</button>
+                <!-- Yönetici Girişi Ekranı -->
+                <div id="admin-login-screen" class="tab-content hidden flex-col items-center justify-center p-8 space-y-6">
+                    <h2 class="text-4xl font-bold text-white">Yönetici Girişi</h2>
+                    <form id="login-form" class="w-full max-w-sm space-y-4">
+                        <input type="password" id="admin-password" placeholder="Şifre" class="w-full p-4 rounded-lg border-2 border-gray-700 bg-gray-800 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                        <button type="submit" class="w-full admin-btn">Giriş Yap</button>
+                    </form>
                 </div>
-            </div>
 
-            <!-- Admin Login Screen -->
-            <div id="admin-login-screen" class="hidden flex-col items-center justify-center p-8 space-y-6">
-                <h2 class="text-4xl font-bold text-white">Yönetici Girişi</h2>
-                <form id="login-form" class="w-full max-w-sm space-y-4">
-                    <input type="password" id="admin-password" placeholder="Şifre" class="w-full p-4 rounded-lg border-2 border-gray-700 bg-gray-800 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                    <button type="submit" class="w-full admin-btn">Giriş Yap</button>
-                </form>
-                <button onclick="showHome()" class="text-gray-400 hover:text-white transition-colors">Ana Sayfaya Dön</button>
-            </div>
-
-            <!-- Admin Panel Screen -->
-            <div id="admin-panel-screen" class="hidden space-y-6">
-                <header class="flex justify-between items-center mb-6">
-                    <h2 class="text-4xl font-bold text-white">Yönetici Paneli</h2>
-                    <button onclick="logout()" class="text-sm text-red-400 hover:text-red-600 font-medium">Çıkış Yap</button>
-                </header>
-                
-                <form id="upload-form" class="bg-gray-800 p-6 rounded-xl space-y-4 shadow-inner">
-                    <h3 class="text-xl font-semibold text-white">Yeni Şarkı Ekle</h3>
-                    <input type="text" id="song-title" placeholder="Şarkı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                    <input type="text" id="song-artist" placeholder="Sanatçı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                    <input type="url" id="song-url" placeholder="Müzik URL'si (mp3, wav vb.)" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                    <button type="submit" class="w-full admin-btn">Şarkıyı Ekle</button>
-                </form>
-                
-                <div class="p-6 bg-gray-800 rounded-xl shadow-md">
-                    <h3 class="text-xl font-semibold text-white mb-4">Mevcut Şarkılar</h3>
-                    <ul id="admin-song-list" class="space-y-4">
-                        <!-- Şarkı listesi buraya gelecek -->
-                    </ul>
+                <!-- Yönetici Paneli Ekranı -->
+                <div id="admin-panel-screen" class="tab-content hidden space-y-6">
+                    <header class="flex justify-between items-center mb-6">
+                        <h2 class="text-4xl font-bold text-white">Yönetici Paneli</h2>
+                        <button onclick="logout()" class="text-sm text-red-400 hover:text-red-600 font-medium">Çıkış Yap</button>
+                    </header>
+                    
+                    <form id="upload-form" class="bg-gray-800 p-6 rounded-xl space-y-4 shadow-inner">
+                        <h3 class="text-xl font-semibold text-white">Yeni Şarkı Ekle</h3>
+                        <input type="text" id="song-title" placeholder="Şarkı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                        <input type="text" id="song-artist" placeholder="Sanatçı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                        <input type="url" id="song-url" placeholder="Müzik URL'si (mp3, wav vb.)" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                        <button type="submit" class="w-full admin-btn">Şarkıyı Ekle</button>
+                    </form>
+                    
+                    <div class="p-6 bg-gray-800 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold text-white mb-4">Mevcut Şarkılar</h3>
+                        <ul id="admin-song-list" class="space-y-4">
+                            <!-- Şarkı listesi buraya gelecek -->
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Music Player -->
-    <footer id="music-player-container" class="player-bar fixed bottom-0 left-0 right-0 p-4 md:p-6 hidden">
-        <div class="flex flex-col md:flex-row items-center justify-between max-w-6xl mx-auto space-y-4 md:space-y-0 md:space-x-8">
-            <div class="flex items-center space-x-4 w-full md:w-auto">
-                <button id="play-pause-btn" class="bg-white rounded-full w-12 h-12 flex items-center justify-center transition-transform hover:scale-110">
-                    <i id="player-play-icon" class="fas fa-play text-black text-xl"></i>
-                    <i id="player-pause-icon" class="fas fa-pause text-black text-xl hidden"></i>
-                </button>
-                <div class="flex-1 min-w-0">
-                    <p id="player-title" class="text-lg font-medium text-white truncate">Şarkı Seçilmedi</p>
-                    <p id="player-artist" class="text-sm text-gray-400 truncate">--</p>
-                </div>
-            </div>
-            <div id="download-player-btn-container" class="w-full md:w-auto">
-                <!-- Download button will be injected here -->
-            </div>
+    <!-- Alt Navigasyon Çubuğu -->
+    <footer id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 border-t border-gray-800">
+        <div class="flex justify-around items-center h-16">
+            <button onclick="showTab('home')" class="nav-link flex flex-col items-center justify-center p-2 text-gray-400 active">
+                <i class="fas fa-home text-xl"></i>
+                <span class="text-xs mt-1">Ana Sayfa</span>
+            </button>
+            <button onclick="showTab('favorites')" class="nav-link flex flex-col items-center justify-center p-2 text-gray-400">
+                <i class="fas fa-heart text-xl"></i>
+                <span class="text-xs mt-1">Favoriler</span>
+            </button>
+            <button onclick="showTab('downloads')" class="nav-link flex flex-col items-center justify-center p-2 text-gray-400">
+                <i class="fas fa-arrow-down text-xl"></i>
+                <span class="text-xs mt-1">İndirilenler</span>
+            </button>
         </div>
     </footer>
+    
+    <audio id="audio-player" class="hidden"></audio>
 
     <script>
-        // Data for this simulation. A real app would use a database.
+        // Veriler (Gerçek bir uygulama veritabanı kullanır, bu simülasyon için localStorage kullanırız)
         let songs = JSON.parse(localStorage.getItem('mubasic_songs')) || [];
         let favorites = JSON.parse(localStorage.getItem('mubasic_favorites')) || [];
         let downloads = JSON.parse(localStorage.getItem('mubasic_downloads')) || [];
         let nextSongId = songs.length > 0 ? Math.max(...songs.map(s => s.id)) + 1 : 1;
 
-        // Elements
-        const homeScreen = document.getElementById('home-screen');
+        // UI Elementleri
+        const mainContent = document.getElementById('main-content');
         const adminLoginScreen = document.getElementById('admin-login-screen');
         const adminPanelScreen = document.getElementById('admin-panel-screen');
+        const fullScreenPlayer = document.getElementById('full-screen-player');
         const loginForm = document.getElementById('login-form');
         const uploadForm = document.getElementById('upload-form');
+        const searchInput = document.getElementById('search-input');
         const songList = document.getElementById('song-list');
         const favoritesList = document.getElementById('favorites-list');
         const downloadsList = document.getElementById('downloads-list');
@@ -238,34 +300,39 @@
         const emptyMessage = document.getElementById('empty-message');
         const emptyFavoritesMessage = document.getElementById('empty-favorites-message');
         const emptyDownloadsMessage = document.getElementById('empty-downloads-message');
-        const musicPlayerContainer = document.getElementById('music-player-container');
         const audioPlayer = document.getElementById('audio-player');
-        const playPauseBtn = document.getElementById('play-pause-btn');
-        const playerPlayIcon = document.getElementById('player-play-icon');
-        const playerPauseIcon = document.getElementById('player-pause-icon');
         const playerTitle = document.getElementById('player-title');
         const playerArtist = document.getElementById('player-artist');
+        const fullScreenPlayPauseBtn = document.getElementById('full-screen-play-pause');
+        const fullScreenPlayIcon = document.getElementById('full-screen-play-icon');
+        const fullScreenPauseIcon = document.getElementById('full-screen-pause-icon');
         const messageBox = document.getElementById('message-box');
         const messageText = document.getElementById('message-text');
-        const downloadPlayerBtnContainer = document.getElementById('download-player-btn-container');
 
-        // State variables
+        // Durum değişkenleri
         let isLoggedIn = false;
         let currentSong = null;
-        let activeTab = 'all-songs';
 
-        // --- View Management ---
+        // --- Görünüm Yönetimi ---
         function showScreen(screen) {
-            homeScreen.classList.add('hidden');
-            adminLoginScreen.classList.add('hidden');
-            adminPanelScreen.classList.add('hidden');
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden', 'flex-col'));
+            fullScreenPlayer.classList.add('hidden');
+            
             screen.classList.remove('hidden');
-            screen.classList.add('flex');
+            screen.classList.add('flex', 'flex-col', 'fade-in');
+
+            // Navigasyon çubuğu aktifliğini güncelle
+            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+            // Eğer ana içerik görünürse, aktif butonu ayarla
+            if (screen === mainContent) {
+                document.querySelector('.nav-link i.fa-home').parentElement.classList.add('active');
+            }
         }
 
         function showHome() {
-            showScreen(homeScreen);
-            showTab(activeTab);
+            showScreen(mainContent);
+            document.getElementById('content-home').classList.remove('hidden');
+            document.getElementById('content-home').classList.add('flex-col');
         }
 
         function showAdminLogin() {
@@ -283,16 +350,40 @@
         }
         
         function showTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
+            showScreen(mainContent);
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('content-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.nav-link i.fa-' + (tabId === 'home' ? 'home' : tabId === 'favorites' ? 'heart' : 'arrow-down')).parentElement.classList.add('active');
             
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-            document.getElementById(`content-${tabId}`).classList.remove('hidden');
-            
-            activeTab = tabId;
-            if (tabId === 'all-songs') renderSongList();
             if (tabId === 'favorites') renderFavorites();
             if (tabId === 'downloads') renderDownloads();
+        }
+        
+        function showFullScreenPlayer(song) {
+            if (!song) {
+                showMessage("Önce bir şarkı seçin.");
+                return;
+            }
+            playerTitle.innerText = song.title;
+            playerArtist.innerText = song.artist;
+            fullScreenPlayer.classList.remove('hidden');
+            fullScreenPlayer.classList.add('flex', 'slide-up');
+            
+            audioPlayer.src = song.audioUrl;
+            audioPlayer.play().catch(e => {
+                console.error("Müzik çalınamadı:", e);
+                showMessage("Müzik çalınamadı. Lütfen URL'yi kontrol edin veya tarayıcı izinlerinizi güncelleyin.");
+            });
+            currentSong = song;
+        }
+
+        function hideFullScreenPlayer() {
+            fullScreenPlayer.classList.add('slide-down');
+            setTimeout(() => {
+                fullScreenPlayer.classList.remove('slide-down', 'flex');
+                fullScreenPlayer.classList.add('hidden');
+            }, 500); // Animasyon süresi kadar bekle
         }
 
         function showMessage(message) {
@@ -306,43 +397,43 @@
             messageBox.classList.remove('flex');
         }
         
-        // --- Persistence Functions ---
+        // --- Kalıcılık Fonksiyonları ---
         function saveToLocalStorage() {
             localStorage.setItem('mubasic_songs', JSON.stringify(songs));
             localStorage.setItem('mubasic_favorites', JSON.stringify(favorites));
             localStorage.setItem('mubasic_downloads', JSON.stringify(downloads));
         }
 
-        // --- Rendering Functions ---
-        function renderSongList() {
+        // --- Render Fonksiyonları ---
+        function renderSongList(filteredSongs = songs) {
             songList.innerHTML = '';
-            if (songs.length === 0) {
+            if (filteredSongs.length === 0) {
                 emptyMessage.classList.remove('hidden');
             } else {
                 emptyMessage.classList.add('hidden');
             }
 
-            songs.forEach(song => {
+            filteredSongs.forEach(song => {
                 const songEl = document.createElement('div');
-                songEl.className = 'song-card flex flex-col items-center justify-between space-y-4';
+                songEl.className = 'song-card';
                 songEl.innerHTML = `
                     <div class="relative w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center">
                         <i class="fas fa-music text-4xl text-gray-500"></i>
-                        <button onclick="playSong(${song.id})" class="play-overlay">
+                        <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(${song.id})">
                             <i class="fas fa-play text-2xl"></i>
                         </button>
                     </div>
-                    <div class="w-full text-center">
+                    <div class="w-full mt-4">
                         <h4 class="text-lg font-medium text-white truncate">${song.title}</h4>
                         <p class="text-sm text-gray-400 truncate">${song.artist}</p>
                     </div>
-                    <div class="flex items-center justify-center w-full mt-2 space-x-2">
-                        <button onclick="addFavorite(${song.id})" class="text-gray-400 hover:text-red-500 transition-colors">
-                            <i class="fas fa-heart"></i> Favoriye Ekle
+                    <div class="flex mt-4 space-x-2">
+                        <button onclick="event.stopPropagation(); addFavorite(${song.id})" class="text-gray-400 hover:text-red-500 transition-colors">
+                            <i class="fas fa-heart text-xl"></i>
                         </button>
-                        <a href="${song.audioUrl}" onclick="addToDownloads(${song.id})" download="${song.title} - ${song.artist}.mp3" class="download-btn text-xs sm:text-sm">
-                            <i class="fas fa-download"></i> İndir
-                        </a>
+                        <button onclick="event.stopPropagation(); addToDownloads(${song.id})" class="text-gray-400 hover:text-green-500 transition-colors">
+                            <i class="fas fa-download text-xl"></i>
+                        </button>
                     </div>
                 `;
                 songList.appendChild(songEl);
@@ -378,15 +469,16 @@
                 emptyFavoritesMessage.classList.add('hidden');
                 favorites.forEach(song => {
                     const songEl = document.createElement('div');
-                    songEl.className = 'song-card flex flex-col items-center justify-between space-y-4';
+                    songEl.className = 'song-card';
+                    songEl.onclick = () => showFullScreenPlayer(song);
                     songEl.innerHTML = `
                         <div class="relative w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-heart text-4xl text-gray-500"></i>
-                            <button onclick="playSong(${song.id})" class="play-overlay">
+                            <i class="fas fa-heart text-4xl text-red-500"></i>
+                            <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(${song.id})">
                                 <i class="fas fa-play text-2xl"></i>
                             </button>
                         </div>
-                        <div class="w-full text-center">
+                        <div class="w-full mt-4">
                             <h4 class="text-lg font-medium text-white truncate">${song.title}</h4>
                             <p class="text-sm text-gray-400 truncate">${song.artist}</p>
                         </div>
@@ -404,15 +496,16 @@
                 emptyDownloadsMessage.classList.add('hidden');
                 downloads.forEach(song => {
                     const songEl = document.createElement('div');
-                    songEl.className = 'song-card flex flex-col items-center justify-between space-y-4';
+                    songEl.className = 'song-card';
+                    songEl.onclick = () => showFullScreenPlayer(song);
                     songEl.innerHTML = `
                         <div class="relative w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center">
                             <i class="fas fa-arrow-down text-4xl text-gray-500"></i>
-                            <button onclick="playSong(${song.id})" class="play-overlay">
+                            <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(${song.id})">
                                 <i class="fas fa-play text-2xl"></i>
                             </button>
                         </div>
-                        <div class="w-full text-center">
+                        <div class="w-full mt-4">
                             <h4 class="text-lg font-medium text-white truncate">${song.title}</h4>
                             <p class="text-sm text-gray-400 truncate">${song.artist}</p>
                         </div>
@@ -422,21 +515,11 @@
             }
         }
 
-        function updatePlayerUI() {
-            if (currentSong) {
-                playerTitle.innerText = currentSong.title;
-                playerArtist.innerText = currentSong.artist;
-                musicPlayerContainer.classList.remove('hidden');
-            } else {
-                musicPlayerContainer.classList.add('hidden');
-            }
-        }
-
-        // --- Core Logic ---
+        // --- Çekirdek Uygulama Mantığı ---
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const password = document.getElementById('admin-password').value;
-            // Hardcoded password for simulation. Not secure.
+            // Kullanıcının isteği doğrultusunda sabit kodlanmış şifre
             if (password === '1975') {
                 isLoggedIn = true;
                 showAdminPanel();
@@ -452,7 +535,6 @@
             const url = document.getElementById('song-url').value.trim();
 
             if (title && artist && url) {
-                // This simulates adding a song. A real app would use a database.
                 songs.push({
                     id: nextSongId++,
                     title,
@@ -465,10 +547,19 @@
                 document.getElementById('song-url').value = '';
                 saveToLocalStorage();
                 renderAdminSongList();
-                showTab('all-songs');
+                showHome();
             } else {
                 showMessage("Lütfen tüm alanları doldurun.");
             }
+        });
+        
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filteredSongs = songs.filter(song => 
+                song.title.toLowerCase().includes(query) || 
+                song.artist.toLowerCase().includes(query)
+            );
+            renderSongList(filteredSongs);
         });
 
         function logout() {
@@ -477,55 +568,44 @@
             showHome();
         }
 
-        function playSong(id) {
-            const song = songs.find(s => s.id === id);
-            if (song) {
-                if (currentSong && currentSong.id === song.id && !audioPlayer.paused) {
-                    audioPlayer.pause();
-                } else {
-                    currentSong = song;
-                    audioPlayer.src = song.audioUrl;
-                    audioPlayer.play();
-                }
-                updatePlayerUI();
-            }
-        }
-        
-        playPauseBtn.addEventListener('click', () => {
-            if (currentSong) {
-                if (audioPlayer.paused) {
-                    audioPlayer.play();
-                } else {
-                    audioPlayer.pause();
-                }
+        fullScreenPlayPauseBtn.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
             } else {
-                showMessage("Önce bir şarkı seçin.");
+                audioPlayer.pause();
             }
         });
         
         // Müzik çalar durum değişikliklerini takip et
         audioPlayer.addEventListener('play', () => {
-            playerPlayIcon.classList.add('hidden');
-            playerPauseIcon.classList.remove('hidden');
+            fullScreenPlayIcon.classList.add('hidden');
+            fullScreenPauseIcon.classList.remove('hidden');
         });
         audioPlayer.addEventListener('pause', () => {
-            playerPlayIcon.classList.remove('hidden');
-            playerPauseIcon.classList.add('hidden');
+            fullScreenPlayIcon.classList.remove('hidden');
+            fullScreenPauseIcon.classList.add('hidden');
         });
         audioPlayer.addEventListener('ended', () => {
-            playerPlayIcon.classList.remove('hidden');
-            playerPauseIcon.classList.add('hidden');
+            fullScreenPlayIcon.classList.remove('hidden');
+            fullScreenPauseIcon.classList.add('hidden');
         });
 
+        function seekBackward(seconds = 10) {
+            audioPlayer.currentTime = Math.max(0, audioPlayer.currentTime - seconds);
+        }
+
+        function seekForward(seconds = 10) {
+            audioPlayer.currentTime = Math.min(audioPlayer.duration, audioPlayer.currentTime + seconds);
+        }
+
         function deleteSong(id) {
-            // This simulates deleting a song.
+            // Şarkı silme işlemi
             songs = songs.filter(s => s.id !== id);
             favorites = favorites.filter(s => s.id !== id);
             downloads = downloads.filter(s => s.id !== id);
             if (currentSong && currentSong.id === id) {
                 audioPlayer.pause();
-                currentSong = null;
-                updatePlayerUI();
+                hideFullScreenPlayer();
             }
             showMessage("Şarkı silindi.");
             saveToLocalStorage();
@@ -554,11 +634,37 @@
                 showMessage(`"${song.title}" indirme listenize eklendi.`);
                 saveToLocalStorage();
                 renderDownloads();
+            } else {
+                showMessage("Bu şarkı zaten indirilmiş.");
             }
         }
+        
+        // playSong fonksiyonu artık doğrudan tam ekran çaları çağırıyor
+        window.playSong = (id) => {
+            const song = songs.find(s => s.id === id);
+            if (song) {
+                showFullScreenPlayer(song);
+            }
+        };
 
-        // Initial render on page load
+        // Fonksiyonları global hale getir (onclick için)
+        window.showTab = showTab;
+        window.showHome = showHome;
+        window.showAdminLogin = showAdminLogin;
+        window.showAdminPanel = showAdminPanel;
+        window.hideMessage = hideMessage;
+        window.deleteSong = deleteSong;
+        window.addFavorite = addFavorite;
+        window.addToDownloads = addToDownloads;
+        window.logout = logout;
+        window.showFullScreenPlayer = showFullScreenPlayer;
+        window.hideFullScreenPlayer = hideFullScreenPlayer;
+        window.seekBackward = seekBackward;
+        window.seekForward = seekForward;
+
+        // Sayfa yüklendiğinde ilk render
         showHome();
+        renderSongList();
     </script>
 </body>
 </html>
