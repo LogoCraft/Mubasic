@@ -63,6 +63,12 @@
         const songArtistInput = document.getElementById('song-artist-input');
         const songCoverInput = document.getElementById('song-cover-input');
         const songAudioInput = document.getElementById('song-audio-input');
+        const findAndAddBtn = document.getElementById('find-and-add-btn');
+        const manualAddBtn = document.getElementById('manual-add-btn');
+        const suggestionsList = document.getElementById('suggestions-list');
+
+        const modeSelect = document.getElementById('mode-select');
+        const manualInputs = document.getElementById('manual-inputs');
 
         // Geçici bir mesaj gösterme fonksiyonu
         function showMessage(text) {
@@ -273,7 +279,7 @@
                 popularMusicList.appendChild(li);
             });
         }
-        
+
         // Bölüm görünürlüğünü yönetme
         function showHomeSection() {
             homeSection.classList.remove('hidden');
@@ -324,7 +330,7 @@
             adminPanelSection.classList.add('hidden');
             adminLoginSection.classList.remove('hidden');
         }
-
+        
         // Admin girişi ve şarkı ekleme mantığı
         function handleAdminLogin() {
             if (adminPasswordInput.value === adminPassword) {
@@ -334,15 +340,128 @@
                 showMessage("Hatalı şifre.");
             }
         }
+        
+        // Admin panelindeki ekleme modunu değiştirme
+        function toggleAddMode() {
+            if (modeSelect.value === 'manuel') {
+                manualInputs.classList.remove('hidden');
+                suggestionsList.classList.add('hidden');
+            } else {
+                manualInputs.classList.add('hidden');
+                suggestionsList.classList.remove('hidden');
+            }
+        }
+
+        // Kolay şarkı ekleme için önceden tanımlanmış liste
+        const predefinedSongs = [
+             {
+                title: "Yine mi Gönlüm",
+                artist: "Feridun Düzağaç",
+                cover: "https://placehold.co/400x400/3B82F6/ffffff?text=Yine+mi+Gonlum",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+            },
+            {
+                title: "Sensiz Olmaz",
+                artist: "Nilüfer",
+                cover: "https://placehold.co/400x400/9B2C2C/ffffff?text=Sensiz+Olmaz",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+            },
+            {
+                title: "Yorgun Yıllar",
+                artist: "Erol Evgin",
+                cover: "https://placehold.co/400x400/F59E0B/ffffff?text=Yorgun+Yillar",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+            },
+             {
+                title: "Gülümse",
+                artist: "Sezen Aksu",
+                cover: "https://placehold.co/400x400/FF5733/ffffff?text=Gulumse",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"
+            },
+            {
+                title: "Fırtınam",
+                artist: "Mor ve Ötesi",
+                cover: "https://placehold.co/400x400/3498DB/ffffff?text=Firtinam",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3"
+            },
+            {
+                title: "Beni Vur",
+                artist: "Şebnem Ferah",
+                cover: "https://placehold.co/400x400/9B59B6/ffffff?text=Beni+Vur",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3"
+            },
+            {
+                title: "Gel Ey Seher",
+                artist: "Cem Karaca",
+                cover: "https://placehold.co/400x400/1ABC9C/ffffff?text=Gel+Ey+Seher",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3"
+            },
+            {
+                title: "Sevda Çiçeği",
+                artist: "Barış Manço",
+                cover: "https://placehold.co/400x400/F1C40F/ffffff?text=Sevda+Cicegi",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3"
+            },
+            {
+                title: "Sessiz Gemi",
+                artist: "Müslüm Gürses",
+                cover: "https://placehold.co/400x400/E74C3C/ffffff?text=Sessiz+Gemi",
+                audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3"
+            }
+        ];
+        
+        // Önerileri gösteren fonksiyon
+        function renderSuggestions(query) {
+            suggestionsList.innerHTML = '';
+            const trimmedQuery = query.toLowerCase().trim();
+            if (trimmedQuery.length > 0) {
+                const filteredSongs = predefinedSongs.filter(song =>
+                    song.title.toLowerCase().includes(trimmedQuery) || song.artist.toLowerCase().includes(trimmedQuery)
+                );
+                filteredSongs.forEach(song => {
+                    const li = document.createElement('li');
+                    li.textContent = `${song.title} - ${song.artist}`;
+                    li.className = 'p-2 bg-gray-600 hover:bg-gray-500 rounded-lg cursor-pointer';
+                    li.addEventListener('click', () => {
+                        songTitleInput.value = song.title;
+                        songArtistInput.value = song.artist;
+                        suggestionsList.innerHTML = ''; // Önerileri temizle
+                    });
+                    suggestionsList.appendChild(li);
+                });
+            }
+        }
 
         async function handleAddSong(e) {
             e.preventDefault();
-            const newSong = {
-                title: songTitleInput.value,
-                artist: songArtistInput.value,
-                cover: songCoverInput.value,
-                audio: songAudioInput.value,
-            };
+            const mode = modeSelect.value;
+            let newSong;
+            
+            if (mode === 'otomatik') {
+                const queryTitle = songTitleInput.value.trim().toLowerCase();
+                const queryArtist = songArtistInput.value.trim().toLowerCase();
+                if (!queryTitle || !queryArtist) {
+                    showMessage("Lütfen şarkı adı ve sanatçı adını girin.");
+                    return;
+                }
+
+                const foundSong = predefinedSongs.find(song =>
+                    song.title.toLowerCase() === queryTitle && song.artist.toLowerCase() === queryArtist
+                );
+
+                if (!foundSong) {
+                    showMessage("Bu şarkı veritabanında bulunamadı. Lütfen manuel ekleme modunu kullanın.");
+                    return;
+                }
+                newSong = foundSong;
+            } else { // Manuel ekleme
+                newSong = {
+                    title: songTitleInput.value,
+                    artist: songArtistInput.value,
+                    cover: songCoverInput.value,
+                    audio: songAudioInput.value,
+                };
+            }
 
             if (!newSong.title || !newSong.artist || !newSong.cover || !newSong.audio) {
                 showMessage("Lütfen tüm alanları doldurun.");
@@ -352,7 +471,7 @@
             try {
                 const songsCollectionRef = collection(db, `/artifacts/${appId}/public/data/songs`);
                 await addDoc(songsCollectionRef, newSong);
-                showMessage("Şarkı başarıyla eklendi!");
+                showMessage(`"${newSong.title}" başarıyla eklendi!`);
                 addSongForm.reset();
             } catch (e) {
                 console.error("Şarkı eklenirken hata oluştu: ", e);
@@ -397,22 +516,25 @@
                         querySnapshot.forEach((doc) => {
                             musicList.push({ id: doc.id, ...doc.data() });
                         });
-                        // Eğer hiç şarkı yoksa, varsayılan listeyi kullan
                         if (musicList.length === 0) {
-                            musicList = [
-                                {
-                                    title: "Gülümse", artist: "Sezen Aksu", cover: "https://placehold.co/400x400/FF5733/ffffff?text=Gulumse", audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3"
-                                },
-                                {
-                                    title: "Fırtınam", artist: "Mor ve Ötesi", cover: "https://placehold.co/400x400/3498DB/ffffff?text=Firtinam", audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3"
-                                },
-                            ];
+                             // Eğer hiç şarkı yoksa, varsayılan listeyi kullan
+                            musicList = predefinedSongs;
                         }
                         renderPopularMusic();
-                        if (currentSongIndex >= musicList.length) {
+                        if (musicList.length > 0 && currentSongIndex >= musicList.length) {
                             currentSongIndex = 0;
                         }
-                        updatePlayerUI(currentSongIndex);
+                        if (musicList.length > 0) {
+                           updatePlayerUI(currentSongIndex);
+                        } else {
+                            // Müzik listesi boşsa playerı temizle
+                            playerCover.src = "https://placehold.co/400x400/10B981/ffffff?text=mubasic";
+                            playerTitle.textContent = "Şarkı Adı";
+                            playerArtist.textContent = "Sanatçı";
+                            audio.pause();
+                            isPlaying = false;
+                        }
+
                     }, (error) => {
                         console.error("Firestore müzik dinleyici hatası:", error);
                     });
@@ -457,8 +579,17 @@
             audio.addEventListener('ended', nextSong);
             adminLoginBtn.addEventListener('click', handleAdminLogin);
             addSongForm.addEventListener('submit', handleAddSong);
+            modeSelect.addEventListener('change', toggleAddMode);
+            songTitleInput.addEventListener('input', (e) => {
+                if(modeSelect.value === 'otomatik') {
+                    renderSuggestions(e.target.value);
+                } else {
+                    suggestionsList.innerHTML = '';
+                }
+            });
 
             updatePlayerUI(currentSongIndex);
+            toggleAddMode(); // Başlangıç modunu ayarla
         };
     </script>
     <style>
@@ -615,13 +746,30 @@
 
                 <!-- Yönetici Paneli -->
                 <div id="admin-panel-section" class="bg-gray-700 p-6 rounded-3xl shadow-xl space-y-4 hidden">
-                    <h2 class="text-2xl font-bold text-center">Yeni Müzik Ekle</h2>
+                    <h2 class="text-2xl font-bold text-center">Müzik Ekle</h2>
                     <form id="add-song-form" class="space-y-4">
-                        <input id="song-title-input" type="text" placeholder="Şarkı Adı" class="w-full p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <!-- Ekleme Modu Seçimi -->
+                        <select id="mode-select" class="w-full p-3 rounded-lg bg-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="otomatik">Otomatik Ekle</option>
+                            <option value="manuel">Manuel Ekle</option>
+                        </select>
+                        
+                        <div class="relative">
+                            <input id="song-title-input" type="text" placeholder="Şarkı Adı" class="w-full p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <!-- Öneri listesi -->
+                            <ul id="suggestions-list" class="absolute w-full mt-1 bg-gray-700 rounded-lg shadow-xl z-10 space-y-1 p-2">
+                                <!-- Öneriler buraya JS ile eklenecek -->
+                            </ul>
+                        </div>
+
                         <input id="song-artist-input" type="text" placeholder="Sanatçı" class="w-full p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                        <input id="song-cover-input" type="text" placeholder="Kapak Resmi URL" class="w-full p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                        <input id="song-audio-input" type="text" placeholder="Müzik Dosyası URL" class="w-full p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
-                        <button type="submit" class="w-full p-3 bg-teal-500 text-white rounded-lg font-bold hover:bg-teal-400 transition-colors duration-200">Müzik Ekle</button>
+                        
+                        <div id="manual-inputs" class="space-y-4 hidden">
+                            <input id="song-cover-input" type="text" placeholder="Kapak Resmi URL" class="w-full p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <input id="song-audio-input" type="text" placeholder="Müzik Dosyası URL" class="w-full p-3 rounded-lg bg-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+                        
+                        <button id="add-song-btn" type="submit" class="w-full p-3 bg-teal-500 text-white rounded-lg font-bold hover:bg-teal-400 transition-colors duration-200">Müzik Ekle</button>
                     </form>
                 </div>
             </section>
