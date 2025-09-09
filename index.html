@@ -181,7 +181,7 @@
                 <header class="flex flex-col sm:flex-row justify-between items-center mb-8">
                     <h1 class="text-4xl sm:text-5xl font-extrabold text-white mb-4 sm:mb-0">Mubasic</h1>
                     <!-- Admin Paneli linki buraya taşındı -->
-                    <a href="#" onclick="showAdminLogin()" class="text-sm text-gray-400 hover:text-white transition-colors font-medium">Admin Paneli</a>
+                    <a href="#" onclick="showPanel('admin-login')" class="text-sm text-gray-400 hover:text-white transition-colors font-medium">Admin Paneli</a>
                 </header>
 
                 <!-- Arama Çubuğu -->
@@ -222,37 +222,40 @@
                         İndirilen şarkınız yok. Birkaç tane indirin!
                     </div>
                 </div>
+            </div>
 
-                <!-- Yönetici Girişi Ekranı -->
-                <div id="admin-login-screen" class="tab-content hidden flex-col items-center justify-center p-8 space-y-6">
-                    <h2 class="text-4xl font-bold text-white">Yönetici Girişi</h2>
-                    <form id="login-form" class="w-full max-w-sm space-y-4">
-                        <input type="password" id="admin-password" placeholder="Şifre" class="w-full p-4 rounded-lg border-2 border-gray-700 bg-gray-800 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                        <button type="submit" class="w-full admin-btn">Giriş Yap</button>
-                    </form>
-                </div>
+            <!-- Yönetici Girişi Ekranı -->
+            <div id="admin-login-screen" class="hidden flex-col items-center justify-center p-8 space-y-6">
+                <h2 class="text-4xl font-bold text-white">Yönetici Girişi</h2>
+                <form id="login-form" class="w-full max-w-sm space-y-4">
+                    <input type="password" id="admin-password" placeholder="Şifre" class="w-full p-4 rounded-lg border-2 border-gray-700 bg-gray-800 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                    <button type="submit" class="w-full admin-btn">Giriş Yap</button>
+                </form>
+            </div>
 
-                <!-- Yönetici Paneli Ekranı -->
-                <div id="admin-panel-screen" class="tab-content hidden space-y-6">
-                    <header class="flex justify-between items-center mb-6">
-                        <h2 class="text-4xl font-bold text-white">Yönetici Paneli</h2>
-                        <button onclick="logout()" class="text-sm text-red-400 hover:text-red-600 font-medium">Çıkış Yap</button>
-                    </header>
-                    
-                    <form id="upload-form" class="bg-gray-800 p-6 rounded-xl space-y-4 shadow-inner">
-                        <h3 class="text-xl font-semibold text-white">Yeni Şarkı Ekle</h3>
-                        <input type="text" id="song-title" placeholder="Şarkı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                        <input type="text" id="song-artist" placeholder="Sanatçı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                        <input type="url" id="song-url" placeholder="Müzik URL'si (mp3, wav vb.)" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                        <button type="submit" class="w-full admin-btn">Şarkıyı Ekle</button>
-                    </form>
-                    
-                    <div class="p-6 bg-gray-800 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold text-white mb-4">Mevcut Şarkılar</h3>
-                        <ul id="admin-song-list" class="space-y-4">
-                            <!-- Şarkı listesi buraya gelecek -->
-                        </ul>
-                    </div>
+            <!-- Yönetici Paneli Ekranı -->
+            <div id="admin-panel-screen" class="hidden space-y-6">
+                <header class="flex justify-between items-center mb-6">
+                    <h2 class="text-4xl font-bold text-white">Yönetici Paneli</h2>
+                    <button onclick="logout()" class="text-sm text-red-400 hover:text-red-600 font-medium">Çıkış Yap</button>
+                </header>
+                
+                <form id="upload-form" class="bg-gray-800 p-6 rounded-xl space-y-4 shadow-inner">
+                    <h3 class="text-xl font-semibold text-white">Yeni Şarkı Ekle</h3>
+                    <p class="text-sm text-gray-400 mb-4">
+                        <span class="font-bold text-white">Önemli:</span> Sadece doğrudan müzik dosyası linkleri (.mp3, .wav vb.) ekleyiniz. YouTube veya benzeri video linkleri çalışmayacaktır.
+                    </p>
+                    <input type="text" id="song-title" placeholder="Şarkı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                    <input type="text" id="song-artist" placeholder="Sanatçı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                    <input type="url" id="song-url" placeholder="Doğrudan Müzik URL'si (.mp3, .wav vb.)" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                    <button type="submit" class="w-full admin-btn">Şarkıyı Ekle</button>
+                </form>
+                
+                <div class="p-6 bg-gray-800 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-white mb-4">Mevcut Şarkılar</h3>
+                    <ul id="admin-song-list" class="space-y-4">
+                        <!-- Şarkı listesi buraya gelecek -->
+                    </ul>
                 </div>
             </div>
         </div>
@@ -313,44 +316,34 @@
         let isLoggedIn = false;
         let currentSong = null;
 
-        // --- Görünüm Yönetimi ---
-        function showScreen(screen) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden', 'flex-col'));
-            fullScreenPlayer.classList.add('hidden');
-            
-            screen.classList.remove('hidden');
-            screen.classList.add('flex', 'flex-col', 'fade-in');
+        /**
+         * Tüm ana panelleri yöneten merkezi fonksiyon.
+         * Sadece belirtilen paneli gösterir ve diğerlerini gizler.
+         */
+        function showPanel(panelId) {
+            const panels = [mainContent, adminLoginScreen, adminPanelScreen];
+            const targetPanel = document.getElementById(panelId);
 
-            // Navigasyon çubuğu aktifliğini güncelle
-            document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
-            // Eğer ana içerik görünürse, aktif butonu ayarla
-            if (screen === mainContent) {
-                document.querySelector('.nav-link i.fa-home').parentElement.classList.add('active');
+            panels.forEach(panel => {
+                if (panel === targetPanel) {
+                    panel.classList.remove('hidden');
+                    panel.classList.add('flex', 'flex-col', 'fade-in');
+                } else {
+                    panel.classList.add('hidden');
+                    panel.classList.remove('flex', 'flex-col', 'fade-in');
+                }
+            });
+
+            // Alt navigasyonun aktifliğini sadece main-content'te ayarla
+            if (panelId === 'main-content') {
+                showTab('home'); // Ana sayfaya dönüldüğünde her zaman Ana Sayfa sekmesini göster
             }
         }
 
-        function showHome() {
-            showScreen(mainContent);
-            document.getElementById('content-home').classList.remove('hidden');
-            document.getElementById('content-home').classList.add('flex-col');
-        }
-
-        function showAdminLogin() {
-            showScreen(adminLoginScreen);
-        }
-
-        function showAdminPanel() {
-            if (isLoggedIn) {
-                showScreen(adminPanelScreen);
-                renderAdminSongList();
-            } else {
-                showMessage("Lütfen önce giriş yapın.");
-                showAdminLogin();
-            }
-        }
-        
+        /**
+         * main-content içinde sekmeler arası geçişi yöneten fonksiyon.
+         */
         function showTab(tabId) {
-            showScreen(mainContent);
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById('content-' + tabId).classList.remove('hidden');
             document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
@@ -522,7 +515,7 @@
             // Kullanıcının isteği doğrultusunda sabit kodlanmış şifre
             if (password === '1975') {
                 isLoggedIn = true;
-                showAdminPanel();
+                showPanel('admin-panel-screen');
             } else {
                 showMessage("Yanlış şifre. Lütfen tekrar deneyin.");
             }
@@ -547,7 +540,7 @@
                 document.getElementById('song-url').value = '';
                 saveToLocalStorage();
                 renderAdminSongList();
-                showHome();
+                showPanel('main-content');
             } else {
                 showMessage("Lütfen tüm alanları doldurun.");
             }
@@ -565,7 +558,7 @@
         function logout() {
             isLoggedIn = false;
             showMessage("Güvenli çıkış yapıldı.");
-            showHome();
+            showPanel('main-content');
         }
 
         fullScreenPlayPauseBtn.addEventListener('click', () => {
@@ -627,15 +620,29 @@
             }
         }
         
+        // Bu fonksiyon, artık gerçek bir indirme işlemi başlatır.
         function addToDownloads(id) {
             const song = songs.find(s => s.id === id);
             if (song && !downloads.some(d => d.id === id)) {
+                // İndirme işlemini tetikle
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = song.audioUrl;
+                // Dosya adını belirle
+                a.download = `${song.artist} - ${song.title}.mp3`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                // İndirilenler listesine ekle
                 downloads.push(song);
-                showMessage(`"${song.title}" indirme listenize eklendi.`);
+                showMessage(`"${song.title}" indirme listenize eklendi ve indirme başladı.`);
                 saveToLocalStorage();
                 renderDownloads();
-            } else {
+            } else if (downloads.some(d => d.id === id)) {
                 showMessage("Bu şarkı zaten indirilmiş.");
+            } else {
+                showMessage("Şarkı bulunamadı.");
             }
         }
         
@@ -649,9 +656,7 @@
 
         // Fonksiyonları global hale getir (onclick için)
         window.showTab = showTab;
-        window.showHome = showHome;
-        window.showAdminLogin = showAdminLogin;
-        window.showAdminPanel = showAdminPanel;
+        window.showPanel = showPanel;
         window.hideMessage = hideMessage;
         window.deleteSong = deleteSong;
         window.addFavorite = addFavorite;
@@ -663,7 +668,7 @@
         window.seekForward = seekForward;
 
         // Sayfa yüklendiğinde ilk render
-        showHome();
+        showPanel('main-content');
         renderSongList();
     </script>
 </body>
