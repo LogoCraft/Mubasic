@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mubasic</title>
+    <title>Mubasic AI</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for icons -->
@@ -241,14 +241,16 @@
                 </header>
                 
                 <form id="upload-form" class="bg-gray-800 p-6 rounded-xl space-y-4 shadow-inner">
-                    <h3 class="text-xl font-semibold text-white">Yeni Şarkı Ekle</h3>
+                    <h3 class="text-xl font-semibold text-white">Yeni Şarkı Ekle (AI Destekli)</h3>
                     <p class="text-sm text-gray-400 mb-4">
-                        <span class="font-bold text-white">Önemli:</span> Sadece doğrudan müzik dosyası linkleri (.mp3, .wav vb.) ekleyiniz. YouTube veya benzeri video linkleri çalışmayacaktır.
+                        Sadece şarkı adını ve sanatçıyı yazın, yapay zeka linki sizin için bulsun.
                     </p>
                     <input type="text" id="song-title" placeholder="Şarkı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
                     <input type="text" id="song-artist" placeholder="Sanatçı Adı" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                    <input type="url" id="song-url" placeholder="Doğrudan Müzik URL'si (.mp3, .wav vb.)" class="w-full p-3 rounded-lg border-2 border-gray-700 bg-gray-900 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                    <button type="submit" class="w-full admin-btn">Şarkıyı Ekle</button>
+                    <button type="submit" id="add-song-btn" class="w-full admin-btn">URL Bul ve Ekle</button>
+                    <div id="loading-message" class="text-center text-green-400 hidden">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>URL aranıyor...
+                    </div>
                 </form>
                 
                 <div class="p-6 bg-gray-800 rounded-xl shadow-md">
@@ -282,11 +284,22 @@
     <audio id="audio-player" class="hidden"></audio>
 
     <script>
-        // Veriler (Gerçek bir uygulama veritabanı kullanır, bu simülasyon için localStorage kullanırız)
+        // Veriler
         let songs = JSON.parse(localStorage.getItem('mubasic_songs')) || [];
         let favorites = JSON.parse(localStorage.getItem('mubasic_favorites')) || [];
         let downloads = JSON.parse(localStorage.getItem('mubasic_downloads')) || [];
         let nextSongId = songs.length > 0 ? Math.max(...songs.map(s => s.id)) + 1 : 1;
+        
+        // Örnek şarkıları başlangıçta ekle
+        const initialSongs = [
+            { id: 1, title: 'Summer Vibes', artist: 'Scott Buckley', audioUrl: 'https://cdn.pixabay.com/audio/2023/12/17/audio_c355c707d7.mp3' },
+            { id: 2, title: 'Inspiring Cinematic', artist: 'Mixaund', audioUrl: 'https://cdn.pixabay.com/audio/2023/06/07/audio_821a364117.mp3' },
+            { id: 3, title: 'Acoustic Guitar', artist: 'Lexin Music', audioUrl: 'https://cdn.pixabay.com/audio/2023/04/18/acoustic-guitar-142340.mp3' },
+        ];
+        if (songs.length === 0) {
+            songs = initialSongs;
+            saveToLocalStorage();
+        }
 
         // UI Elementleri
         const mainContent = document.getElementById('main-content');
@@ -295,6 +308,8 @@
         const fullScreenPlayer = document.getElementById('full-screen-player');
         const loginForm = document.getElementById('login-form');
         const uploadForm = document.getElementById('upload-form');
+        const addSongBtn = document.getElementById('add-song-btn');
+        const loadingMessage = document.getElementById('loading-message');
         const searchInput = document.getElementById('search-input');
         const songList = document.getElementById('song-list');
         const favoritesList = document.getElementById('favorites-list');
@@ -412,7 +427,7 @@
                 songEl.innerHTML = `
                     <div class="relative w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center">
                         <i class="fas fa-music text-4xl text-gray-500"></i>
-                        <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(${song.id})">
+                        <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(songs.find(s => s.id === ${song.id}))">
                             <i class="fas fa-play text-2xl"></i>
                         </button>
                     </div>
@@ -467,7 +482,7 @@
                     songEl.innerHTML = `
                         <div class="relative w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center">
                             <i class="fas fa-heart text-4xl text-red-500"></i>
-                            <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(${song.id})">
+                            <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(songs.find(s => s.id === ${song.id}))">
                                 <i class="fas fa-play text-2xl"></i>
                             </button>
                         </div>
@@ -494,7 +509,7 @@
                     songEl.innerHTML = `
                         <div class="relative w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center">
                             <i class="fas fa-arrow-down text-4xl text-gray-500"></i>
-                            <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(${song.id})">
+                            <button class="play-overlay" onclick="event.stopPropagation(); showFullScreenPlayer(songs.find(s => s.id === ${song.id}))">
                                 <i class="fas fa-play text-2xl"></i>
                             </button>
                         </div>
@@ -516,35 +531,100 @@
             if (password === '1975') {
                 isLoggedIn = true;
                 showPanel('admin-panel-screen');
+                renderAdminSongList();
             } else {
                 showMessage("Yanlış şifre. Lütfen tekrar deneyin.");
             }
         });
 
-        uploadForm.addEventListener('submit', (e) => {
+        uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('song-title').value.trim();
             const artist = document.getElementById('song-artist').value.trim();
-            const url = document.getElementById('song-url').value.trim();
 
-            if (title && artist && url) {
-                songs.push({
-                    id: nextSongId++,
-                    title,
-                    artist,
-                    audioUrl: url
-                });
-                showMessage(`"${title}" başarıyla eklendi.`);
-                document.getElementById('song-title').value = '';
-                document.getElementById('song-artist').value = '';
-                document.getElementById('song-url').value = '';
-                saveToLocalStorage();
-                renderAdminSongList();
-                showPanel('main-content');
-            } else {
-                showMessage("Lütfen tüm alanları doldurun.");
+            if (!title || !artist) {
+                showMessage("Lütfen şarkı adı ve sanatçı adını girin.");
+                return;
+            }
+
+            // Arama işlemi başladı
+            addSongBtn.disabled = true;
+            loadingMessage.classList.remove('hidden');
+
+            try {
+                const newSong = await findSongUrl(title, artist);
+
+                if (newSong && newSong.audioUrl) {
+                    songs.push({
+                        id: nextSongId++,
+                        title: newSong.title,
+                        artist: newSong.artist,
+                        audioUrl: newSong.audioUrl
+                    });
+                    showMessage(`"${newSong.title}" başarıyla eklendi.`);
+                    document.getElementById('song-title').value = '';
+                    document.getElementById('song-artist').value = '';
+                    saveToLocalStorage();
+                    renderAdminSongList();
+                    renderSongList();
+                } else {
+                    showMessage("Aradığınız müzik için doğrudan bir link bulunamadı. Lütfen daha sonra tekrar deneyin.");
+                }
+            } catch (error) {
+                console.error("URL arama hatası:", error);
+                showMessage("Müzik arama sırasında bir hata oluştu. Lütfen bağlantınızı kontrol edin.");
+            } finally {
+                addSongBtn.disabled = false;
+                loadingMessage.classList.add('hidden');
             }
         });
+        
+        // Gemini API kullanarak müzik URL'si bulma fonksiyonu
+        async function findSongUrl(title, artist) {
+            const prompt = `Find a direct, public domain, royalty-free audio file URL (.mp3 or .wav) for the song named "${title}" by artist "${artist}". The response MUST be a single JSON object with the following schema: { "title": string, "artist": string, "audioUrl": string }. If no URL is found, return an empty JSON object {}. Do not include any other text or explanation.`;
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "title": { "type": "STRING" },
+                            "artist": { "type": "STRING" },
+                            "audioUrl": { "type": "STRING" }
+                        }
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API hatası: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (jsonText) {
+                    return JSON.parse(jsonText);
+                } else {
+                    return {};
+                }
+            } catch (error) {
+                console.error("API'den yanıt alınamadı:", error);
+                throw error;
+            }
+        }
         
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
