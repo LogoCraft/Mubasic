@@ -3,591 +3,477 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mu-Basic</title>
+    <title>mu-basic</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background: white; /* Arka planı beyaz yap */
-            color: #1f2937; /* Yazı rengini koyu gri yap */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        .view-section {
-            display: none;
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
-        }
-        .view-section.active {
-            display: block;
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .nav-btn.active {
-            color: #dc2626; /* Aktif navigasyon butonu kırmızı */
-        }
-        .nav-btn:hover {
-            background-color: #e2e8f0;
-        }
-        .item-card {
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-        .item-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .card-media {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 0;
-        }
-        .card-content {
-            position: relative;
-            z-index: 1;
-            background-color: rgba(255, 255, 255, 0.7); /* Opak arka plan */
-            padding: 1rem;
-            border-radius: 0.75rem;
-        }
-        #alert-message {
-            transition: opacity 0.3s ease-in-out;
-        }
-        #music-player-bar {
+        .player-bar {
+            transform: translateY(100%);
             transition: transform 0.3s ease-in-out;
         }
-        #media-background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: -1;
-            opacity: 0.2;
-            transition: opacity 1s ease-in-out;
+        .player-bar.active {
+            transform: translateY(0);
         }
-        #admin-drag-drop-area {
-            border: 2px dashed #94a3b8;
-            background-color: #f1f5f9;
-            transition: border-color 0.3s;
+        /* Özel Tailwind renkleri */
+        :root {
+            --primary-bg: #121212;
+            --secondary-bg: #181818;
+            --accent-green: #1DB954;
+            --accent-green-hover: #1ed760;
+            --text-white: #FFFFFF;
         }
-        #admin-drag-drop-area.drag-over {
-            border-color: #dc2626;
-            background-color: #e2e8f0;
+        .bg-primary-bg { background-color: var(--primary-bg); }
+        .bg-secondary-bg { background-color: var(--secondary-bg); }
+        .text-text-white { color: var(--text-white); }
+        .bg-accent-green { background-color: var(--accent-green); }
+        .hover\:bg-accent-green-hover:hover { background-color: var(--accent-green-hover); }
+
+        /* Özel oynatıcı çubuğu stili */
+        .player-progress-bar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            cursor: pointer;
+            visibility: hidden;
+            transition: visibility 0.2s;
+        }
+        .player-progress-bar:hover::-webkit-slider-thumb {
+            visibility: visible;
+        }
+        /* Loader stili */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent-green);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="bg-secondary-bg text-text-white antialiased">
 
-    <!-- Arka Plan Medya Alanı -->
-    <img id="media-background" src="" alt="Arka Plan Medya">
-    <video id="video-background" class="hidden" loop muted autoplay playsinline></video>
+    <!-- Ana Konteyner -->
+    <div class="min-h-screen flex flex-col pb-24">
 
-    <!-- Başlık -->
-    <header class="p-4 sm:p-6 text-center">
-        <h1 class="text-4xl font-bold text-red-500">
-            <span class="bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-rose-600">
-                Mu-Basic
-            </span>
-        </h1>
-    </header>
-
-    <!-- Ana İçerik Alanı -->
-    <div class="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <!-- Ana Sayfa -->
-        <div id="home-view" class="view-section active">
-            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Müzikler</h2>
-            <div id="song-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Müzikler buraya JavaScript ile eklenecek -->
+        <!-- Başlık ve Arama Çubuğu -->
+        <header class="bg-primary-bg p-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-10 shadow-lg rounded-b-md">
+            <h1 class="text-3xl font-bold mb-4 md:mb-0 text-white">mu-basic</h1>
+            <div class="relative w-full md:w-1/3">
+                <input id="searchInput" type="text" placeholder="Şarkı veya sanatçı ara..." class="w-full bg-secondary-bg text-white rounded-full py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-accent-green transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
             </div>
-            <p id="no-songs-message" class="text-center text-gray-500 mt-10 hidden">
-                Henüz müzik eklemedin. Admin panelinden yükleyebilirsin.
-            </p>
-        </div>
+        </header>
 
-        <!-- Favoriler Sayfası -->
-        <div id="favorites-view" class="view-section">
-            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Favoriler</h2>
-            <div id="favorite-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Favori müzikler buraya eklenecek -->
+        <!-- İçerik Alanı -->
+        <main class="flex-grow p-4 md:p-8">
+
+            <!-- Şarkı Ekleme Formu -->
+            <div id="addSongSection" class="bg-primary-bg rounded-lg p-6 mb-8 shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-white">Yeni Şarkı Ekle</h2>
+                <form id="addSongForm" class="flex flex-col space-y-4">
+                    <input type="text" id="songTitle" placeholder="Şarkı Adı" required class="w-full bg-secondary-bg text-white rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-accent-green">
+                    <input type="text" id="songArtist" placeholder="Sanatçı Adı" required class="w-full bg-secondary-bg text-white rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-accent-green">
+                    <input type="url" id="songCover" placeholder="Albüm Kapağı URL'si (isteğe bağlı)" class="w-full bg-secondary-bg text-white rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-accent-green">
+                    <label for="songFile" class="text-sm text-gray-400">Müzik Dosyası Seçin (.mp3, .wav, vb.):</label>
+                    <input type="file" id="songFile" accept="audio/*" required class="w-full bg-secondary-bg text-white rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-accent-green">
+                    <button type="submit" class="w-full bg-accent-green text-white rounded-md p-3 font-semibold hover:bg-accent-green-hover transition-colors">Şarkıyı Ekle</button>
+                </form>
             </div>
-            <p id="no-favorites-message" class="text-center text-gray-500 mt-10 hidden">
-                Henüz favori müziğiniz yok.
-            </p>
-        </div>
 
-        <!-- Yönetici (Admin) Sayfası -->
-        <div id="admin-view" class="view-section">
-            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Admin Paneli</h2>
+            <!-- Müzik Kütüphanesi -->
+            <div id="musicLibrarySection">
+                <h2 class="text-2xl font-semibold mb-4 text-white">Müzik Kütüphaneniz</h2>
+                <div id="songsContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <!-- Şarkılar buraya dinamik olarak yüklenecek -->
+                    <div id="loader" class="col-span-full flex justify-center items-center py-10">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Oynatıcı Çubuğu -->
+        <div id="playerBar" class="fixed bottom-0 left-0 right-0 bg-primary-bg border-t border-gray-700 py-4 px-4 flex flex-col md:flex-row items-center gap-4 player-bar rounded-t-md">
+            <!-- Şarkı Bilgisi -->
+            <div class="flex-shrink-0 flex items-center gap-4 w-full md:w-1/3">
+                <img id="playerCover" src="https://placehold.co/60x60/1DB954/FFFFFF?text=M" alt="Şarkı Kapağı" class="w-16 h-16 rounded-md shadow-lg">
+                <div class="flex flex-col truncate">
+                    <span id="playerTitle" class="text-lg font-semibold truncate">Şarkı Adı</span>
+                    <span id="playerArtist" class="text-sm text-gray-400 truncate">Sanatçı Adı</span>
+                </div>
+            </div>
             
-            <!-- Giriş Formu -->
-            <div id="admin-login" class="max-w-md mx-auto p-6 bg-slate-100 rounded-xl shadow-lg">
-                <p class="text-lg text-center mb-4 text-gray-700">Lütfen şifrenizi girin.</p>
-                <input type="password" id="admin-password" placeholder="Şifre" class="w-full p-3 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500">
-                <button onclick="login()" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors">Giriş Yap</button>
-            </div>
-
-            <!-- Müzik Ekleme Alanı -->
-            <div id="add-music-form" class="max-w-md mx-auto p-6 bg-slate-100 rounded-xl shadow-lg hidden">
-                <h3 class="text-xl font-bold mb-4 text-center text-red-600">Yeni Müzik Ekle</h3>
-                
-                <input type="text" id="add-song-title" placeholder="Şarkı Adı" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300">
-                <input type="text" id="add-song-artist" placeholder="Sanatçı Adı" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300">
-
-                <div id="admin-drag-drop-area" class="w-full p-10 text-center rounded-lg cursor-pointer">
-                    <p class="text-gray-500 mb-2">Dosyayı buraya sürükle bırak</p>
-                    <p class="text-xs text-gray-600 mb-4">(Müzik ve medya dosyalarını birlikte seçebilirsiniz)</p>
-                    <input type="file" id="drag-drop-input" class="hidden" multiple accept="audio/*, video/*, image/*">
-                    <button onclick="document.getElementById('drag-drop-input').click()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                        Dosya Seç
+            <!-- Kontrol Butonları ve Zaman Çubuğu -->
+            <div class="flex flex-col items-center w-full md:w-1/3">
+                <!-- Kontrol Butonları -->
+                <div class="flex items-center gap-6 mb-2">
+                    <button id="shuffleBtn" class="p-2 text-gray-400 hover:text-accent-green transition-colors rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                    </button>
+                    <button id="prevBtn" class="p-2 text-white hover:text-accent-green transition-colors rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button id="playPauseBtn" class="p-4 bg-accent-green rounded-full shadow-lg hover:bg-accent-green-hover transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" id="playIcon" class="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" id="pauseIcon" class="h-8 w-8 text-white hidden" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button id="nextBtn" class="p-2 text-white hover:text-accent-green transition-colors rounded-full rotate-180">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button id="repeatBtn" class="p-2 text-gray-400 hover:text-accent-green transition-colors rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.42 3h.022m-.022-3h-9m-7 5a7 7 0 1114 0v-1A7 7 0 004 12v1zm4 11h.022m-.022-4h-9.978" />
+                        </svg>
                     </button>
                 </div>
-                
-                <div id="admin-song-list" class="mt-8 space-y-4">
-                    <!-- Müzik listesi buraya gelecek -->
+                <!-- Zaman Çubuğu -->
+                <div class="flex items-center w-full">
+                    <span id="currentTime" class="text-xs text-gray-400 mr-2">0:00</span>
+                    <input type="range" id="progressBar" value="0" min="0" max="100" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer player-progress-bar">
+                    <span id="durationTime" class="text-xs text-gray-400 ml-2">0:00</span>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Özel Uyarı Mesajı -->
-    <div id="alert-message" class="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 opacity-0 hidden"></div>
-
-    <!-- Müzik Çalar Çubuğu (Altta sabit) -->
-    <div id="music-player-bar" class="fixed bottom-0 left-0 right-0 bg-slate-100 p-4 flex items-center justify-between z-50 transform translate-y-full">
-        <div class="flex items-center space-x-4">
-            <img id="player-art" src="https://placehold.co/60x60/f1f5f9/1f2937?text=Müzik" alt="Albüm Kapağı" class="w-12 h-12 rounded-lg">
-            <div>
-                <p id="player-title" class="text-sm font-semibold text-red-600"></p>
-                <p id="player-artist" class="text-xs text-red-400"></p>
+            
+            <!-- Ses Kontrolü -->
+            <div class="flex items-center w-full md:w-1/3 justify-end gap-2 mt-4 md:mt-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9.383 3.036A1 1 0 0110 4v12a1 1 0 01-1.383.964l-4.595-2.757L2 13V7l2.792-1.207 4.591-2.757zM15.5 8a.5.5 0 01.5.5v3a.5.5 0 01-1 0v-3a.5.5 0 01.5-.5zM17.5 7a.5.5 0 01.5.5v5a.5.5 0 01-1 0v-5a.5.5 0 01.5-.5zM13.5 10a.5.5 0 01.5.5v-1a.5.5 0 01-1 0v1a.5.5 0 01.5-.5z" clip-rule="evenodd" />
+                </svg>
+                <input type="range" id="volumeBar" min="0" max="1" step="0.01" value="1" class="w-24 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer">
             </div>
         </div>
-        <div class="flex items-center space-x-2">
-            <button id="player-play-btn" class="p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors">
-                <svg id="player-play-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="player-pause-icon" xmlns="http://www.w3.org/2d00/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 hidden"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            </button>
-        </div>
-    </div>
 
-    <!-- Navigasyon Çubuğu (Altta sabit) -->
-    <div class="fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around bg-slate-200 z-40">
-        <button onclick="showView('home')" id="home-nav-btn" class="nav-btn flex-1 flex flex-col items-center justify-center py-2 text-xs font-medium text-gray-700 active">
-            <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            Ana Sayfa
-        </button>
-        <button onclick="showView('favorites')" id="favorites-nav-btn" class="nav-btn flex-1 flex flex-col items-center justify-center py-2 text-xs font-medium text-gray-700">
-            <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3c3.08 0 5.5 2.42 5.5 5.5 0 3.78-3.4 6.86-8.55 11.54z"/></svg>
-            Favoriler
-        </button>
-        <button onclick="showView('admin')" id="admin-nav-btn" class="nav-btn flex-1 flex flex-col items-center justify-center py-2 text-xs font-medium text-gray-700">
-            <svg class="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            Admin
-        </button>
+        <!-- Özel Onay Kutusu (Alert yerine) -->
+        <div id="customModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex justify-center items-center p-4">
+            <div class="bg-primary-bg rounded-lg p-6 w-full max-w-sm text-center shadow-2xl border border-gray-700">
+                <p id="modalMessage" class="text-white text-lg mb-4"></p>
+                <button id="modalOkBtn" class="bg-accent-green text-white py-2 px-6 rounded-full font-semibold hover:bg-accent-green-hover transition-colors">Tamam</button>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        const SONG_STORAGE_KEY = 'musicAppData';
-        const FAVORITES_STORAGE_KEY = 'musicAppFavorites';
-        const ADMIN_PASSWORD = '1975';
+        // DOM elemanlarını seçme
+        const searchInput = document.getElementById('searchInput');
+        const songsContainer = document.getElementById('songsContainer');
+        const playerBar = document.getElementById('playerBar');
+        const playerCover = document.getElementById('playerCover');
+        const playerTitle = document.getElementById('playerTitle');
+        const playerArtist = document.getElementById('playerArtist');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const repeatBtn = document.getElementById('repeatBtn');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationTimeEl = document.getElementById('durationTime');
+        const volumeBar = document.getElementById('volumeBar');
+        const customModal = document.getElementById('customModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalOkBtn = document.getElementById('modalOkBtn');
+        const loader = document.getElementById('loader');
+        const addSongForm = document.getElementById('addSongForm');
+        const songTitleInput = document.getElementById('songTitle');
+        const songArtistInput = document.getElementById('songArtist');
+        const songCoverInput = document.getElementById('songCover');
+        const songFileInput = document.getElementById('songFile');
+        const musicLibrarySection = document.getElementById('musicLibrarySection');
 
+        // Müzik oynatıcısı ve durumu
         const audio = new Audio();
-        let currentSong = null;
+        let allSongs = [];
+        let currentSongIndex = -1;
         let isPlaying = false;
-        let songs = [];
-        let favorites = [];
+        let isShuffle = false;
+        let isRepeat = false;
 
-        // DOM elementlerini seçme
-        const songListContainer = document.getElementById('song-list');
-        const favoriteListContainer = document.getElementById('favorite-list');
-        const noFavoritesMessage = document.getElementById('no-favorites-message');
-        const noSongsMessage = document.getElementById('no-songs-message');
-        const adminLogin = document.getElementById('admin-login');
-        const addMusicForm = document.getElementById('add-music-form');
-        const adminSongList = document.getElementById('admin-song-list');
-        const playerBar = document.getElementById('music-player-bar');
-        const playerTitle = document.getElementById('player-title');
-        const playerArtist = document.getElementById('player-artist');
-        const playerArt = document.getElementById('player-art');
-        const playerPlayBtn = document.getElementById('player-play-btn');
-        const playerPlayIcon = document.getElementById('player-play-icon');
-        const playerPauseIcon = document.getElementById('player-pause-icon');
-        const navButtons = document.querySelectorAll('.nav-btn');
-        const alertMessage = document.getElementById('alert-message');
-        const mediaBackground = document.getElementById('media-background');
-        const videoBackground = document.getElementById('video-background');
+        // Yerel depolama anahtarı
+        const STORAGE_KEY = 'mu-basic-songs';
 
-        const dragDropArea = document.getElementById('admin-drag-drop-area');
-        const fileInput = document.getElementById('drag-drop-input');
-        
-        // Navigasyon ve görünüm yönetimi (yumuşak geçişler ile)
-        function showView(viewId) {
-            document.querySelectorAll('.view-section').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            const activeSection = document.getElementById(`${viewId}-view`);
-            activeSection.classList.add('active');
-            
-            navButtons.forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.getElementById(`${viewId}-nav-btn`).classList.add('active');
-
-            if (viewId === 'favorites') {
-                renderFavorites();
-            } else if (viewId === 'admin') {
-                renderAdminList();
-            }
-        }
-        
-        // Hata ve bilgi mesajlarını gösterme
-        function showAlert(message) {
-            alertMessage.innerText = message;
-            alertMessage.classList.remove('hidden');
-            setTimeout(() => {
-                alertMessage.style.opacity = '1';
-            }, 10);
-            setTimeout(() => {
-                alertMessage.style.opacity = '0';
-                setTimeout(() => {
-                    alertMessage.classList.add('hidden');
-                }, 300);
-            }, 3000);
-        }
-
-        // Yerel depolama verilerini yükleme
-        function loadData() {
+        // Yerel depolamadan şarkıları yükleme
+        function loadSongsFromStorage() {
             try {
-                const storedSongs = localStorage.getItem(SONG_STORAGE_KEY);
+                const storedSongs = localStorage.getItem(STORAGE_KEY);
                 if (storedSongs) {
-                    songs = JSON.parse(storedSongs);
+                    allSongs = JSON.parse(storedSongs);
                 } else {
-                    songs = [];
-                }
-
-                const storedFavorites = localStorage.getItem(FAVORITES_STORAGE_KEY);
-                if (storedFavorites) {
-                    favorites = JSON.parse(storedFavorites);
+                    allSongs = [];
                 }
             } catch (e) {
-                console.error("Yerel depolama verisi yüklenemedi", e);
-                songs = [];
-                favorites = [];
+                console.error("Yerel depolamadan şarkılar yüklenirken hata oluştu:", e);
+                allSongs = [];
             }
         }
 
-        // Verileri kaydetme
-        function saveData() {
-            localStorage.setItem(SONG_STORAGE_KEY, JSON.stringify(songs));
-            localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
-        }
-
-        // Ana sayfayı oluşturma
-        function renderSongs() {
-            songListContainer.innerHTML = '';
-            if (songs.length === 0) {
-                noSongsMessage.classList.remove('hidden');
-            } else {
-                noSongsMessage.classList.add('hidden');
-            }
-
-            songs.forEach(song => {
-                const isFavorite = favorites.includes(song.id);
-                const item = createSongCard(song, isFavorite);
-                songListContainer.appendChild(item);
-            });
-        }
-
-        // Favorileri oluşturma
-        function renderFavorites() {
-            favoriteListContainer.innerHTML = '';
-            if (favorites.length === 0) {
-                noFavoritesMessage.classList.remove('hidden');
-                return;
-            }
-            noFavoritesMessage.classList.add('hidden');
-            const favoriteSongs = songs.filter(song => favorites.includes(song.id));
-            favoriteSongs.forEach(song => {
-                const isFavorite = favorites.includes(song.id);
-                const item = createSongCard(song, isFavorite);
-                favoriteListContainer.appendChild(item);
-            });
-        }
-
-        // Şarkı kartı oluşturma
-        function createSongCard(song, isFavorite) {
-            const card = document.createElement('div');
-            card.classList.add('item-card', 'bg-slate-100', 'rounded-xl', 'p-4', 'shadow-md', 'flex', 'flex-col', 'items-center', 'text-center');
-            
-            card.innerHTML = `
-                <div class="w-full h-48 rounded-lg relative overflow-hidden flex items-center justify-center bg-slate-200">
-                    <p class="text-xl font-bold text-gray-400">
-                        ${song.hasMedia ? 'Oynatmak İçin Tıkla' : 'Medya Yok'}
-                    </p>
-                </div>
-                <h3 class="text-lg font-semibold truncate w-full mt-4 text-red-600">${song.title}</h3>
-                <p class="text-sm text-red-400 truncate w-full">${song.artist}</p>
-                <div class="flex items-center space-x-2 mt-4">
-                    <button class="play-btn p-2 rounded-full bg-red-600 hover:bg-red-700 text-white transition-colors" data-id="${song.id}">
-                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    </button>
-                    <button class="fav-btn p-2 rounded-full bg-slate-200 hover:bg-slate-300 text-gray-700 transition-colors" data-id="${song.id}">
-                        <svg class="w-5 h-5 fill-current ${isFavorite ? 'text-red-400' : 'text-gray-400'}" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3c3.08 0 5.5 2.42 5.5 5.5 0 3.78-3.4 6.86-8.55 11.54z"/></svg>
-                    </button>
-                </div>
-            `;
-            const playButton = card.querySelector('.play-btn');
-            const favButton = card.querySelector('.fav-btn');
-
-            playButton.addEventListener('click', () => playSong(song.id));
-            favButton.addEventListener('click', () => toggleFavorite(song.id));
-
-            return card;
-        }
-
-        // Müzik çalma
-        function playSong(songId) {
-            const songToPlay = songs.find(s => s.id === songId);
-            if (!songToPlay) return;
-
-            if (currentSong && currentSong.id === songId && isPlaying) {
-                audio.pause();
-                isPlaying = false;
-            } else if (currentSong && currentSong.id === songId) {
-                audio.play();
-                isPlaying = true;
-            } else {
-                currentSong = songToPlay;
-                audio.src = currentSong.musicUrl;
-                audio.play();
-                isPlaying = true;
-                
-                // Medya dosyası varsa medya seçme penceresini aç
-                if (currentSong.hasMedia) {
-                    const tempInput = document.createElement('input');
-                    tempInput.type = 'file';
-                    tempInput.accept = currentSong.mediaType;
-                    tempInput.style.display = 'none';
-                    document.body.appendChild(tempInput);
-                    
-                    tempInput.addEventListener('change', (event) => {
-                        const file = event.target.files[0];
-                        if (file) {
-                            const url = URL.createObjectURL(file);
-                            if (currentSong.mediaType.startsWith('video')) {
-                                videoBackground.src = url;
-                                videoBackground.classList.remove('hidden');
-                                mediaBackground.classList.add('hidden');
-                            } else {
-                                mediaBackground.src = url;
-                                mediaBackground.classList.remove('hidden');
-                                videoBackground.classList.add('hidden');
-                            }
-                        } else {
-                            // Dosya seçilmezse arka planı temizle
-                            mediaBackground.src = '';
-                            videoBackground.src = '';
-                        }
-                        document.body.removeChild(tempInput);
-                    });
-                    
-                    tempInput.click();
-                } else {
-                    // Medya yoksa arka planı temizle
-                    mediaBackground.src = '';
-                    videoBackground.src = '';
-                }
-            }
-            
-            updatePlayerBar();
-            togglePlayPauseIcon();
-        }
-
-        // Oynatma çubuğunu güncelleme
-        function updatePlayerBar() {
-            if (currentSong) {
-                playerBar.classList.remove('translate-y-full');
-                playerTitle.innerText = currentSong.title;
-                playerArtist.innerText = currentSong.artist;
-                playerArt.src = currentSong.hasMedia ? "https://placehold.co/60x60/f1f5f9/1f2937?text=Medya" : "https://placehold.co/60x60/f1f5f9/1f2937?text=Müzik";
+        // Şarkıları yerel depolamaya kaydetme
+        function saveSongsToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allSongs));
+            } catch (e) {
+                console.error("Şarkılar yerel depolamaya kaydedilirken hata oluştu:", e);
             }
         }
 
-        // Oynat/Duraklat simgesini değiştirme
-        function togglePlayPauseIcon() {
-            if (isPlaying) {
-                playerPlayIcon.classList.add('hidden');
-                playerPauseIcon.classList.remove('hidden');
-            } else {
-                playerPlayIcon.classList.remove('hidden');
-                playerPauseIcon.classList.add('hidden');
-            }
-        }
-        
-        // Ses durumu dinleyicileri
-        audio.addEventListener('play', () => { isPlaying = true; togglePlayPauseIcon(); });
-        audio.addEventListener('pause', () => { isPlaying = false; togglePlayPauseIcon(); });
-        audio.addEventListener('ended', () => { isPlaying = false; togglePlayPauseIcon(); });
-
-        // Oynatma çubuğundaki düğme
-        playerPlayBtn.addEventListener('click', () => {
-            if (currentSong) {
-                if (isPlaying) {
-                    audio.pause();
-                } else {
-                    audio.play();
-                }
-            }
-        });
-
-        // Favori ekleme/kaldırma
-        function toggleFavorite(songId) {
-            const index = favorites.indexOf(songId);
-            if (index > -1) {
-                favorites.splice(index, 1);
-                showAlert("Favorilerden kaldırıldı.");
-            } else {
-                favorites.push(songId);
-                showAlert("Favorilere eklendi!");
-            }
-            saveData();
-            renderSongs();
-            if (document.getElementById('favorites-view').classList.contains('active')) {
-                renderFavorites();
-            }
-        }
-
-        // Admin giriş
-        function login() {
-            const passwordInput = document.getElementById('admin-password').value;
-            if (passwordInput === ADMIN_PASSWORD) {
-                adminLogin.classList.add('hidden');
-                addMusicForm.classList.remove('hidden');
-                renderAdminList();
-            } else {
-                showAlert("Yanlış şifre!");
-            }
-        }
-
-        // Yönetici listesini oluşturma
-        function renderAdminList() {
-            adminSongList.innerHTML = `
-                <h3 class="text-xl font-bold text-center mb-4 text-gray-800">Müzikleri Yönet</h3>
-            `;
-            if (songs.length === 0) {
-                adminSongList.innerHTML += `<p class="text-center text-gray-500">Henüz müzik yok.</p>`;
-                return;
-            }
-            songs.forEach(song => {
-                const item = document.createElement('div');
-                item.classList.add('flex', 'items-center', 'justify-between', 'bg-slate-200', 'p-3', 'rounded-lg');
-                item.innerHTML = `
-                    <div class="flex-1 mr-4">
-                        <p class="font-semibold truncate text-red-600">${song.title}</p>
-                        <p class="text-sm text-red-400 truncate">${song.artist}</p>
-                    </div>
-                    <button class="delete-btn bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg" data-id="${song.id}">
-                        Sil
-                    </button>
-                `;
-                const deleteBtn = item.querySelector('.delete-btn');
-                deleteBtn.addEventListener('click', () => deleteMusic(song.id));
-                adminSongList.appendChild(item);
-            });
-        }
-
-        // Sürükle-bırak olayları
-        dragDropArea.addEventListener('dragover', (e) => {
+        // Şarkı ekleme formu
+        addSongForm.onsubmit = (e) => {
             e.preventDefault();
-            dragDropArea.classList.add('drag-over');
-        });
 
-        dragDropArea.addEventListener('dragleave', () => {
-            dragDropArea.classList.remove('drag-over');
-        });
-
-        dragDropArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dragDropArea.classList.remove('drag-over');
-            handleFiles(e.dataTransfer.files);
-        });
-
-        // Dosya seçme inputu olayları
-        fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
-        });
-
-        // Dosyaları işleme
-        function handleFiles(files) {
-            const musicFile = Array.from(files).find(file => file.type.startsWith('audio'));
-            const mediaFile = Array.from(files).find(file => file.type.startsWith('video') || file.type.startsWith('image'));
-            
-            const titleInput = document.getElementById('add-song-title');
-            const artistInput = document.getElementById('add-song-artist');
-
-            if (!musicFile) {
-                showAlert("Lütfen bir müzik dosyası seçin (.mp3, .wav, vb.).");
+            const file = songFileInput.files[0];
+            if (!file) {
+                showModal("Lütfen bir müzik dosyası seçin.");
                 return;
             }
 
-            if (!titleInput.value || !artistInput.value) {
-                showAlert("Lütfen şarkı adı ve sanatçı adı girin.");
-                return;
-            }
-
-            const musicReader = new FileReader();
-            musicReader.onload = function(musicEvent) {
-                const musicUrl = musicEvent.target.result;
-                
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const audioDataUrl = event.target.result;
                 const newSong = {
-                    id: Date.now(),
-                    title: titleInput.value,
-                    artist: artistInput.value,
-                    musicUrl: musicUrl,
-                    hasMedia: !!mediaFile,
-                    mediaType: mediaFile ? mediaFile.type : null
+                    id: crypto.randomUUID(), // Benzersiz ID oluştur
+                    title: songTitleInput.value,
+                    artist: songArtistInput.value,
+                    cover: songCoverInput.value || 'https://placehold.co/100x100/1DB954/FFFFFF?text=M',
+                    audio: audioDataUrl
                 };
 
-                songs.push(newSong);
-                saveData();
-                renderSongs();
-                renderAdminList();
-                titleInput.value = '';
-                artistInput.value = '';
-                showAlert("Müzik başarıyla eklendi!");
+                allSongs.push(newSong);
+                saveSongsToStorage();
+                renderSongs(allSongs);
+                showModal("Şarkı başarıyla eklendi!");
+                addSongForm.reset();
             };
+            reader.readAsDataURL(file);
+        };
 
-            musicReader.onerror = function() {
-                showAlert("Müzik dosyası okuma hatası.");
-            };
-            musicReader.readAsDataURL(musicFile);
+        // Fonksiyonlar
+        
+        // Custom modal gösterme
+        function showModal(message) {
+            modalMessage.textContent = message;
+            customModal.classList.remove('hidden');
         }
 
-        // Müzik silme
-        function deleteMusic(songId) {
-            songs = songs.filter(song => song.id !== songId);
-            favorites = favorites.filter(id => id !== songId); // Favorilerden de sil
-            saveData();
-            renderSongs();
-            renderAdminList();
-            showAlert("Müzik başarıyla silindi.");
+        // Şarkıları DOM'a yerleştirme
+        function renderSongs(songs) {
+            songsContainer.innerHTML = '';
+            if (songs.length === 0) {
+                songsContainer.innerHTML = '<p class="col-span-full text-center text-gray-400">Henüz şarkı bulunmuyor. Lütfen yukarıdan ekleyin.</p>';
+                return;
+            }
+            songs.forEach(song => {
+                const songEl = document.createElement('div');
+                songEl.className = 'bg-primary-bg rounded-lg p-4 cursor-pointer hover:bg-gray-800 transition-transform hover:scale-105 group';
+                songEl.innerHTML = `
+                    <div class="relative">
+                        <img src="${song.cover}" alt="${song.title} Kapağı" class="w-full h-auto rounded-lg mb-4 shadow-lg">
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center transition-all duration-300 rounded-lg">
+                             <button class="play-btn p-3 bg-accent-green rounded-full opacity-0 group-hover:opacity-100 transition-opacity" data-song-id="${song.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                                </svg>
+                             </button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-start mt-2">
+                        <div>
+                            <h3 class="font-semibold text-white truncate">${song.title}</h3>
+                            <p class="text-sm text-gray-400 truncate">${song.artist}</p>
+                        </div>
+                    </div>
+                `;
+                songsContainer.appendChild(songEl);
+            });
+            // Olay dinleyicilerini tekrar ata
+            setupEventListeners();
         }
 
-        // Uygulamayı başlatma
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
-            renderSongs();
-        });
+        // Şarkı çalma fonksiyonu
+        function playSong(song) {
+            audio.src = song.audio;
+            audio.play();
+            isPlaying = true;
+            updatePlayPauseIcon();
+            updatePlayerBarInfo(song);
+            playerBar.classList.add('active');
+            currentSongIndex = allSongs.findIndex(s => s.id === song.id);
+        }
+
+        // Oynatma/Duraklatma ikonu güncelleme
+        function updatePlayPauseIcon() {
+            if (isPlaying) {
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            } else {
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            }
+        }
+
+        // Oynatıcı çubuğunu şarkı bilgisiyle güncelleme
+        function updatePlayerBarInfo(song) {
+            playerCover.src = song.cover;
+            playerTitle.textContent = song.title;
+            playerArtist.textContent = song.artist;
+        }
+
+        // Oynatıcı olay dinleyicilerini ayarlama
+        function setupEventListeners() {
+            document.querySelectorAll('.play-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    const songId = e.currentTarget.dataset.songId;
+                    const song = allSongs.find(s => s.id === songId);
+                    if (song) {
+                        playSong(song);
+                    }
+                };
+            });
+        }
+
+        // Oynatıcı çubuğu olay dinleyicileri
+        playPauseBtn.onclick = () => {
+            if (isPlaying) {
+                audio.pause();
+            } else {
+                audio.play();
+            }
+            isPlaying = !isPlaying;
+            updatePlayPauseIcon();
+        };
+
+        nextBtn.onclick = () => {
+            if (allSongs.length === 0) return;
+            let nextIndex = currentSongIndex + 1;
+            if (isShuffle) {
+                nextIndex = Math.floor(Math.random() * allSongs.length);
+            } else {
+                if (nextIndex >= allSongs.length) {
+                    nextIndex = 0; // Başa dön
+                }
+            }
+            playSong(allSongs[nextIndex]);
+        };
+        
+        prevBtn.onclick = () => {
+            if (allSongs.length === 0) return;
+            let prevIndex = currentSongIndex - 1;
+            if (isShuffle) {
+                prevIndex = Math.floor(Math.random() * allSongs.length);
+            } else {
+                if (prevIndex < 0) {
+                    prevIndex = allSongs.length - 1; // Sona dön
+                }
+            }
+            playSong(allSongs[prevIndex]);
+        };
+        
+        shuffleBtn.onclick = () => {
+            isShuffle = !isShuffle;
+            shuffleBtn.classList.toggle('text-accent-green', isShuffle);
+            shuffleBtn.classList.toggle('text-gray-400', !isShuffle);
+            showModal(`Karıştırma modu ${isShuffle ? 'açık' : 'kapalı'}.`);
+        };
+
+        repeatBtn.onclick = () => {
+            isRepeat = !isRepeat;
+            repeatBtn.classList.toggle('text-accent-green', isRepeat);
+            repeatBtn.classList.toggle('text-gray-400', !isRepeat);
+            showModal(`Tekrar modu ${isRepeat ? 'açık' : 'kapalı'}.`);
+        };
+
+        // Ses seviyesi
+        volumeBar.oninput = () => {
+            audio.volume = volumeBar.value;
+        };
+
+        // Oynatma süresini güncelle
+        audio.ontimeupdate = () => {
+            const progress = (audio.currentTime / audio.duration) * 100;
+            progressBar.value = isNaN(progress) ? 0 : progress;
+            const minutes = Math.floor(audio.currentTime / 60);
+            const seconds = Math.floor(audio.currentTime % 60).toString().padStart(2, '0');
+            currentTimeEl.textContent = `${minutes}:${seconds}`;
+        };
+
+        audio.onloadedmetadata = () => {
+            const minutes = Math.floor(audio.duration / 60);
+            const seconds = Math.floor(audio.duration % 60).toString().padStart(2, '0');
+            durationTimeEl.textContent = `${minutes}:${seconds}`;
+        };
+
+        // Çubuğa tıklanınca şarkı süresini değiştirme
+        progressBar.oninput = () => {
+            audio.currentTime = (progressBar.value / 100) * audio.duration;
+        };
+
+        // Şarkı bitince sonraki şarkıya geçme
+        audio.onended = () => {
+            if (isRepeat) {
+                audio.play(); // Aynı şarkıyı tekrar et
+            } else {
+                nextBtn.click(); // Bir sonraki şarkıya geç
+            }
+        };
+
+        // Arama çubuğu filtrelemesi
+        searchInput.onkeyup = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredSongs = allSongs.filter(song => 
+                song.title.toLowerCase().includes(searchTerm) || 
+                song.artist.toLowerCase().includes(searchTerm)
+            );
+            renderSongs(filteredSongs);
+            if (searchTerm === '') {
+                musicLibrarySection.classList.remove('hidden');
+                addSongForm.classList.remove('hidden');
+                
+            } else {
+                 musicLibrarySection.classList.add('hidden');
+                 addSongForm.classList.add('hidden');
+            }
+        };
+        
+        // Modal kapatma
+        modalOkBtn.onclick = () => {
+            customModal.classList.add('hidden');
+        };
+
+        // Sayfa yüklendiğinde
+        window.onload = () => {
+            loadSongsFromStorage();
+            renderSongs(allSongs);
+            loader.classList.add('hidden');
+        };
     </script>
 </body>
-</htmlf>
+</html>
