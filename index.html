@@ -181,6 +181,7 @@
             const songCollectionPath = `/artifacts/${appId}/public/data/songs`;
             const favCollectionPath = `/artifacts/${appId}/users/${window.userId}/favorites`;
             const albumCollectionPath = `/artifacts/${appId}/users/${window.userId}/albums`;
+            const playCountsCollectionPath = `/artifacts/${appId}/public/data/playCounts`;
 
             // Listen to public songs collection
             onSnapshot(collection(window.db, songCollectionPath), (snapshot) => {
@@ -203,89 +204,121 @@
                 renderAlbums();
             }, (error) => console.error("Error listening to albums:", error));
 
-            // Load play count from public data (can be optimized later)
-            getDocs(collection(window.db, `/artifacts/${appId}/public/data/playCounts`)).then(snapshot => {
+            // Listen to public play counts
+            onSnapshot(collection(window.db, playCountsCollectionPath), (snapshot) => {
                 snapshot.forEach(doc => {
                     window.playCount[doc.id] = doc.data().count;
                 });
                 renderTopSongs();
-            });
+            }, (error) => console.error("Error listening to play counts:", error));
         };
 
         window.addSongToFirestore = async (songData) => {
-            const collectionRef = collection(window.db, `/artifacts/${appId}/public/data/songs`);
-            await addDoc(collectionRef, songData);
+            try {
+                const collectionRef = collection(window.db, `/artifacts/${appId}/public/data/songs`);
+                await addDoc(collectionRef, songData);
+            } catch (error) {
+                console.error("Error adding song:", error);
+                showAlert("Şarkı eklenirken bir hata oluştu.");
+            }
         };
 
         window.deleteSongFromFirestore = async (songId) => {
-            const songDocRef = doc(window.db, `/artifacts/${appId}/public/data/songs`, songId);
-            await deleteDoc(songDocRef);
+            try {
+                const songDocRef = doc(window.db, `/artifacts/${appId}/public/data/songs`, songId);
+                await deleteDoc(songDocRef);
+                showAlert("Şarkı başarıyla silindi.");
+            } catch (error) {
+                console.error("Error deleting song:", error);
+                showAlert("Şarkı silinirken bir hata oluştu.");
+            }
         };
 
         window.toggleFavoriteFirestore = async (songId) => {
-            const docRef = doc(window.db, `/artifacts/${appId}/users/${window.userId}/favorites`, songId);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                await deleteDoc(docRef);
-            } else {
-                await setDoc(docRef, { timestamp: new Date() });
+            try {
+                const docRef = doc(window.db, `/artifacts/${appId}/users/${window.userId}/favorites`, songId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    await deleteDoc(docRef);
+                    showAlert("Favorilerden kaldırıldı.");
+                } else {
+                    await setDoc(docRef, { timestamp: new Date() });
+                    showAlert("Favorilere eklendi!");
+                }
+            } catch (error) {
+                console.error("Error toggling favorite:", error);
+                showAlert("Favori işlemi sırasında bir hata oluştu.");
             }
         };
 
         window.incrementPlayCount = async (songId) => {
-            const docRef = doc(window.db, `/artifacts/${appId}/public/data/playCounts`, songId);
-            const docSnap = await getDoc(docRef);
-            let newCount = 1;
-            if (docSnap.exists()) {
-                newCount = docSnap.data().count + 1;
+            try {
+                const docRef = doc(window.db, `/artifacts/${appId}/public/data/playCounts`, songId);
+                const docSnap = await getDoc(docRef);
+                let newCount = 1;
+                if (docSnap.exists()) {
+                    newCount = docSnap.data().count + 1;
+                }
+                await setDoc(docRef, { count: newCount }, { merge: true });
+            } catch (error) {
+                console.error("Error incrementing play count:", error);
             }
-            await setDoc(docRef, { count: newCount }, { merge: true });
         };
         
         window.addAlbumToFirestore = async (albumName, songId) => {
-            if (!albumName) return;
-
-            const collectionRef = collection(window.db, `/artifacts/${appId}/users/${window.userId}/albums`);
-            const albumData = {
-                name: albumName,
-                songs: [songId],
-                timestamp: new Date()
-            };
-            await addDoc(collectionRef, albumData);
-            showAlert("Yeni albüm oluşturuldu!");
-        };
-
-        window.addEmptyAlbumToFirestore = async (albumName) => {
-            if (!albumName) return;
-            const collectionRef = collection(window.db, `/artifacts/${appId}/users/${window.userId}/albums`);
-            const albumData = {
-                name: albumName,
-                songs: [],
-                timestamp: new Date()
-            };
-            await addDoc(collectionRef, albumData);
-            showAlert("Yeni boş albüm oluşturuldu!");
+            if (!albumName) {
+                showAlert("Lütfen bir albüm adı girin.");
+                return;
+            }
+            try {
+                const collectionRef = collection(window.db, `/artifacts/${appId}/users/${window.userId}/albums`);
+                const albumData = {
+                    name: albumName,
+                    songs: songId ? [songId] : [],
+                    timestamp: new Date()
+                };
+                await addDoc(collectionRef, albumData);
+                showAlert("Yeni albüm oluşturuldu!");
+            } catch (error) {
+                console.error("Error adding album:", error);
+                showAlert("Albüm eklenirken bir hata oluştu.");
+            }
         };
 
         window.addSongToExistingAlbum = async (albumId, songId) => {
-            const docRef = doc(window.db, `/artifacts/${appId}/users/${window.userId}/albums`, albumId);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const albumData = docSnap.data();
-                if (!albumData.songs.includes(songId)) {
-                    albumData.songs.push(songId);
-                    await setDoc(docRef, albumData);
-                    showAlert("Şarkı albüme eklendi!");
-                } else {
-                    showAlert("Bu şarkı zaten albümde!");
+            try {
+                const docRef = doc(window.db, `/artifacts/${appId}/users/${window.userId}/albums`, albumId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const albumData = docSnap.data();
+                    if (albumData.songs && !albumData.songs.includes(songId)) {
+                        albumData.songs.push(songId);
+                        await setDoc(docRef, albumData);
+                        showAlert("Şarkı albüme eklendi!");
+                    } else if (albumData.songs && albumData.songs.includes(songId)) {
+                         showAlert("Bu şarkı zaten albümde!");
+                    } else {
+                        // Handle case where songs array doesn't exist
+                        albumData.songs = [songId];
+                        await setDoc(docRef, albumData);
+                        showAlert("Şarkı albüme eklendi!");
+                    }
                 }
+            } catch (error) {
+                console.error("Error adding song to album:", error);
+                showAlert("Şarkı albüme eklenirken bir hata oluştu.");
             }
         };
 
         window.deleteAlbumFromFirestore = async (albumId) => {
-            const docRef = doc(window.db, `/artifacts/${appId}/users/${window.userId}/albums`, albumId);
-            await deleteDoc(docRef);
-            showAlert("Albüm başarıyla silindi.");
+            try {
+                const docRef = doc(window.db, `/artifacts/${appId}/users/${window.userId}/albums`, albumId);
+                await deleteDoc(docRef);
+                showAlert("Albüm başarıyla silindi.");
+            } catch (error) {
+                console.error("Error deleting album:", error);
+                showAlert("Albüm silinirken bir hata oluştu.");
+            }
         };
 
         // Initialize Firebase on DOMContentLoaded
@@ -377,6 +410,19 @@
                 
                 <input type="text" id="add-song-title" placeholder="Şarkı Adı" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300">
                 <input type="text" id="add-song-artist" placeholder="Sanatçı Adı" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300">
+                <input type="text" id="music-url-input" placeholder="Müzik URL'si (MP3)" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300">
+                <input type="text" id="cover-url-input" placeholder="Kapak URL'si (isteğe bağlı)" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300">
+                <input type="text" id="media-url-input" placeholder="Video/Resim URL'si (isteğe bağlı)" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 placeholder-gray-400 border border-gray-300">
+                
+                <div class="flex items-center space-x-2 mb-4">
+                    <label for="media-type-select" class="text-sm font-medium text-gray-700">Medya Tipi:</label>
+                    <select id="media-type-select" class="flex-1 p-3 rounded-lg bg-white text-gray-800 border border-gray-300">
+                        <option value="">Seçiniz</option>
+                        <option value="image">Resim</option>
+                        <option value="video">Video</option>
+                    </select>
+                </div>
+
                 <select id="add-song-mood" class="w-full p-3 mb-4 rounded-lg bg-white text-gray-800 border border-gray-300">
                     <option value="">Ruh Halı Seç</option>
                     <option value="hüzünlü">Hüzünlü</option>
@@ -384,20 +430,6 @@
                     <option value="keyifli">Keyifli</option>
                     <option value="antreman">Antreman</option>
                 </select>
-
-                <!-- Müzik Dosyası Yükleme Alanı -->
-                <label for="music-file-input" class="block text-sm font-medium text-gray-700 mb-2">Müzik Dosyası (Sürükle & Bırak veya Tıkla)</label>
-                <div id="admin-drag-drop-area" class="w-full p-10 text-center rounded-lg cursor-pointer mb-4">
-                    <p class="text-gray-500 mb-2">Müzik dosyasını buraya sürükleyip bırakın</p>
-                    <input type="file" id="music-file-input" class="hidden" accept="audio/*">
-                </div>
-                
-                <!-- Kapak Fotoğrafı Yükleme Alanı -->
-                <label for="cover-file-input" class="block text-sm font-medium text-gray-700 mb-2">Kapak Fotoğrafı (isteğe bağlı)</label>
-                <div class="flex flex-col items-center p-4 bg-white rounded-lg border border-gray-300">
-                    <img id="cover-preview" src="https://placehold.co/120x120/f1f5f9/1f2937?text=Kapak" alt="Kapak Önizleme" class="w-32 h-32 object-cover rounded-lg mb-4">
-                    <input type="file" id="cover-file-input" class="w-full p-2 text-gray-800" accept="image/*">
-                </div>
                 
                 <button onclick="saveMusic()" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors">Kaydet</button>
 
@@ -555,10 +587,10 @@
         const forwardBtn = document.getElementById('forward-btn');
 
         // Admin Paneli
-        const musicFileInput = document.getElementById('music-file-input');
-        const coverFileInput = document.getElementById('cover-file-input');
-        const coverPreview = document.getElementById('cover-preview');
-        const dragDropArea = document.getElementById('admin-drag-drop-area');
+        const musicUrlInput = document.getElementById('music-url-input');
+        const coverUrlInput = document.getElementById('cover-url-input');
+        const mediaUrlInput = document.getElementById('media-url-input');
+        const mediaTypeSelect = document.getElementById('media-type-select');
 
         // Albüm Ekleme Modalı
         const albumModal = document.getElementById('add-to-album-modal');
@@ -569,6 +601,7 @@
         const modalInfoText = document.getElementById('modal-info-text');
         
         let songIdToAdd = null; // Modala hangi şarkının ekleneceğini tutar
+        let activePlayBtn = null; // Aktif oynatma butonunu tutar
 
         // Admin şifresi (gerçek bir uygulamada bu sabit kodlanmamalıdır)
         const ADMIN_PASSWORD = '1975';
@@ -591,7 +624,9 @@
             });
             document.getElementById(`${viewId}-nav-btn`).classList.add('active');
 
+            // Görünüm değişiminde gerekli verileri yeniden yükle
             if (viewId === 'home') {
+                document.getElementById('home-view').querySelector('h2').innerText = "Tüm Müzikler";
                 renderTopSongs();
                 renderSongs();
             } else if (viewId === 'favorites') {
@@ -749,7 +784,8 @@
                 <p class="text-sm text-red-400 truncate w-full">${song.artist}</p>
                 <div class="flex items-center space-x-2 mt-4">
                     <button class="play-btn p-2 rounded-full bg-red-600 hover:bg-red-700 text-white transition-colors" data-id="${song.id}">
-                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="play-icon w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="pause-icon w-5 h-5 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                     </button>
                     <button class="fav-btn p-2 rounded-full bg-slate-200 hover:bg-slate-300 text-gray-700 transition-colors" data-id="${song.id}">
                         <svg class="w-5 h-5 fill-current ${isFavorite ? 'text-red-400' : 'text-gray-400'}" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3c3.08 0 5.5 2.42 5.5 5.5 0 3.78-3.4 6.86-8.55 11.54z"/></svg>
@@ -763,7 +799,7 @@
             const favButton = card.querySelector('.fav-btn');
             const albumButton = card.querySelector('.album-btn');
 
-            playButton.addEventListener('click', () => playSong(song.id));
+            playButton.addEventListener('click', () => playSong(song.id, playButton));
             favButton.addEventListener('click', () => window.toggleFavoriteFirestore(song.id));
             albumButton.addEventListener('click', () => openAlbumModal(song.id));
 
@@ -771,25 +807,30 @@
         }
 
         // Müzik çalma
-        function playSong(songId) {
+        function playSong(songId, playBtnElement) {
             const songToPlay = window.songs.find(s => s.id === songId);
-            if (!songToPlay) return;
+            if (!songToPlay || !songToPlay.musicUrl) {
+                showAlert("Bu şarkının müzik URL'si yok.");
+                return;
+            }
 
-            if (currentSong && currentSong.id === songId && isPlaying) {
-                audio.pause();
-                isPlaying = false;
-            } else if (currentSong && currentSong.id === songId) {
-                audio.play();
-                isPlaying = true;
-
-                // Dinlenme sayısını artır ve Firestore'a kaydet
-                window.incrementPlayCount(currentSong.id);
+            if (currentSong && currentSong.id === songId) {
+                if (isPlaying) {
+                    audio.pause();
+                } else {
+                    audio.play();
+                }
             } else {
+                if (activePlayBtn) {
+                    activePlayBtn.querySelector('.play-icon').classList.remove('hidden');
+                    activePlayBtn.querySelector('.pause-icon').classList.add('hidden');
+                }
+                
                 currentSong = songToPlay;
                 audio.src = currentSong.musicUrl;
-                audio.play();
-                isPlaying = true;
-                window.incrementPlayCount(currentSong.id);
+                audio.load();
+                audio.play().catch(e => console.error("Oynatma hatası:", e));
+                activePlayBtn = playBtnElement;
             }
             
             updatePlayerBar();
@@ -802,18 +843,24 @@
             if (!currentSong) return;
 
             // Medya türüne göre doğru elementi göster/gizle
-            if (currentSong.mediaType && currentSong.mediaType.startsWith('video')) {
-                fullScreenVideo.classList.remove('hidden');
-                fullScreenCover.classList.add('hidden');
-                fullScreenVideo.src = currentSong.mediaUrl;
-            } else if (currentSong.mediaType && currentSong.mediaType.startsWith('image')) {
-                fullScreenCover.classList.remove('hidden');
-                fullScreenVideo.classList.add('hidden');
-                fullScreenCover.src = currentSong.mediaUrl;
+            if (currentSong.mediaUrl) {
+                if (currentSong.mediaType === 'video') {
+                    fullScreenVideo.src = currentSong.mediaUrl;
+                    fullScreenVideo.classList.remove('hidden');
+                    fullScreenCover.classList.add('hidden');
+                } else if (currentSong.mediaType === 'image') {
+                    fullScreenCover.src = currentSong.mediaUrl;
+                    fullScreenCover.classList.remove('hidden');
+                    fullScreenVideo.classList.add('hidden');
+                } else {
+                    fullScreenCover.src = currentSong.coverUrl || 'https://placehold.co/1200x675/e2e8f0/94a3b8?text=Medya+Yok';
+                    fullScreenCover.classList.remove('hidden');
+                    fullScreenVideo.classList.add('hidden');
+                }
             } else {
+                fullScreenCover.src = currentSong.coverUrl || 'https://placehold.co/1200x675/e2e8f0/94a3b8?text=Medya+Yok';
                 fullScreenCover.classList.remove('hidden');
                 fullScreenVideo.classList.add('hidden');
-                fullScreenCover.src = currentSong.coverUrl || 'https://placehold.co/1200x675/e2e8f0/94a3b8?text=Medya+Yok';
             }
             
             fsPlayerTitle.innerText = currentSong.title;
@@ -854,16 +901,28 @@
                 playerPauseIcon.classList.remove('hidden');
                 fsPlayIcon.classList.add('hidden');
                 fsPauseIcon.classList.remove('hidden');
+                if (activePlayBtn) {
+                     activePlayBtn.querySelector('.play-icon').classList.add('hidden');
+                     activePlayBtn.querySelector('.pause-icon').classList.remove('hidden');
+                }
             } else {
                 playerPlayIcon.classList.remove('hidden');
                 playerPauseIcon.classList.add('hidden');
                 fsPlayIcon.classList.remove('hidden');
                 fsPauseIcon.classList.add('hidden');
+                if (activePlayBtn) {
+                     activePlayBtn.querySelector('.play-icon').classList.remove('hidden');
+                     activePlayBtn.querySelector('.pause-icon').classList.add('hidden');
+                }
             }
         }
         
         // Ses durumu dinleyicileri
-        audio.addEventListener('play', () => { isPlaying = true; togglePlayPauseIcon(); });
+        audio.addEventListener('play', () => { 
+            isPlaying = true; 
+            togglePlayPauseIcon();
+            window.incrementPlayCount(currentSong.id);
+        });
         audio.addEventListener('pause', () => { isPlaying = false; togglePlayPauseIcon(); });
         audio.addEventListener('ended', () => { isPlaying = false; togglePlayPauseIcon(); closeFullScreenPlayer(); });
         audio.addEventListener('timeupdate', () => {
@@ -965,11 +1024,7 @@
         createNewAlbumBtn.addEventListener('click', () => {
             const newAlbumName = newAlbumNameInput.value.trim();
             if (newAlbumName) {
-                if (songIdToAdd) {
-                    window.addAlbumToFirestore(newAlbumName, songIdToAdd);
-                } else {
-                    window.addEmptyAlbumToFirestore(newAlbumName);
-                }
+                window.addAlbumToFirestore(newAlbumName, songIdToAdd);
                 closeAlbumModal();
             } else {
                 showAlert("Lütfen bir albüm adı girin.");
@@ -1015,66 +1070,28 @@
             });
         }
 
-        // Dosya yükleme ve önizleme
-        coverFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    coverPreview.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                coverPreview.src = 'https://placehold.co/120x120/f1f5f9/1f2937?text=Kapak';
-            }
-        });
-
-        dragDropArea.addEventListener('click', () => {
-            musicFileInput.click();
-        });
-
-        dragDropArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dragDropArea.classList.add('drag-over');
-        });
-
-        dragDropArea.addEventListener('dragleave', () => {
-            dragDropArea.classList.remove('drag-over');
-        });
-
-        dragDropArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dragDropArea.classList.remove('drag-over');
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type.startsWith('audio/')) {
-                musicFileInput.files = files;
-                showAlert("Müzik dosyası seçildi.");
-            } else {
-                showAlert("Geçersiz dosya. Lütfen bir müzik dosyası sürükleyip bırakın.");
-            }
-        });
-
         // Müzik kaydetme işlevi
         async function saveMusic() {
             const titleInput = document.getElementById('add-song-title');
             const artistInput = document.getElementById('add-song-artist');
             const moodInput = document.getElementById('add-song-mood');
-            const musicFile = musicFileInput.files[0];
-            const coverFile = coverFileInput.files[0];
+            const musicUrl = musicUrlInput.value.trim();
+            const coverUrl = coverUrlInput.value.trim();
+            const mediaUrl = mediaUrlInput.value.trim();
+            const mediaType = mediaTypeSelect.value;
 
-            if (!titleInput.value || !artistInput.value || !musicFile) {
-                showAlert("Lütfen şarkı adı, sanatçı adı ve bir müzik dosyası girin.");
+            if (!titleInput.value || !artistInput.value || !musicUrl) {
+                showAlert("Lütfen şarkı adı, sanatçı adı ve müzik URL'si girin.");
                 return;
             }
-
-            const musicUrl = await readFileAsDataURL(musicFile);
-            const coverUrl = coverFile ? await readFileAsDataURL(coverFile) : null;
 
             const newSong = {
                 title: titleInput.value,
                 artist: artistInput.value,
                 musicUrl: musicUrl,
-                coverUrl: coverUrl,
+                coverUrl: coverUrl || 'https://placehold.co/160x160/e2e8f0/94a3b8?text=Kapak',
+                mediaUrl: mediaUrl || '',
+                mediaType: mediaType || '',
                 mood: moodInput.value,
             };
 
@@ -1083,20 +1100,16 @@
             titleInput.value = '';
             artistInput.value = '';
             moodInput.value = '';
-            musicFileInput.value = '';
-            coverFileInput.value = '';
-            coverPreview.src = 'https://placehold.co/120x120/f1f5f9/1f2937?text=Kapak';
+            musicUrlInput.value = '';
+            coverUrlInput.value = '';
+            mediaUrlInput.value = '';
+            mediaTypeSelect.value = '';
             showAlert("Müzik başarıyla eklendi!");
         }
 
-        function readFileAsDataURL(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = (error) => reject(error);
-                reader.readAsDataURL(file);
-            });
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            showView('home');
+        });
     </script>
 </body>
 </html>
