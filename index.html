@@ -182,6 +182,18 @@
         </main>
     </div>
 
+    <!-- Message box for alerts and prompts -->
+    <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <div id="message-text" class="text-center text-lg mb-4"></div>
+            <input type="text" id="prompt-input" class="w-full p-2 mb-4 rounded bg-gray-700 text-white hidden" placeholder="Dosya adını girin...">
+            <div class="flex justify-center space-x-4">
+                <button id="ok-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none hidden">Tamam</button>
+                <button id="confirm-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 focus:outline-none hidden">Onayla</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Bar - Controls -->
     <div class="bottom-bar">
         <div class="flex items-center space-x-4">
@@ -207,16 +219,6 @@
         </div>
     </div>
 
-    <!-- Message box for alerts -->
-    <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <div id="message-text" class="text-center text-lg mb-4"></div>
-            <div class="flex justify-center space-x-4">
-                <button id="ok-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none">Tamam</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const htmlEditor = document.getElementById('html-editor');
@@ -234,7 +236,9 @@
             
             const messageBox = document.getElementById('message-box');
             const messageText = document.getElementById('message-text');
+            const promptInput = document.getElementById('prompt-input');
             const okBtn = document.getElementById('ok-btn');
+            const confirmBtn = document.getElementById('confirm-btn');
 
             let files = [];
             let activeFileIndex = -1;
@@ -243,7 +247,9 @@
             const showMessage = (text) => {
                 return new Promise(resolve => {
                     messageText.textContent = text;
-                    okBtn.style.display = 'inline-block';
+                    promptInput.classList.add('hidden');
+                    okBtn.classList.remove('hidden');
+                    confirmBtn.classList.add('hidden');
                     messageBox.classList.remove('hidden');
 
                     const handleOk = () => {
@@ -252,6 +258,24 @@
                         resolve(true);
                     };
                     okBtn.addEventListener('click', handleOk);
+                });
+            };
+
+            const showPrompt = (text, defaultValue = '') => {
+                return new Promise(resolve => {
+                    messageText.textContent = text;
+                    promptInput.value = defaultValue;
+                    promptInput.classList.remove('hidden');
+                    okBtn.classList.add('hidden');
+                    confirmBtn.classList.remove('hidden');
+                    messageBox.classList.remove('hidden');
+
+                    const handleConfirm = () => {
+                        messageBox.classList.add('hidden');
+                        confirmBtn.removeEventListener('click', handleConfirm);
+                        resolve(promptInput.value);
+                    };
+                    confirmBtn.addEventListener('click', handleConfirm);
                 });
             };
 
@@ -329,8 +353,8 @@
                 sidebar.classList.toggle('active');
             });
 
-            newFileBtn.addEventListener('click', () => {
-                const newFileName = prompt('Yeni dosya adını girin (ör: script.html):');
+            newFileBtn.addEventListener('click', async () => {
+                const newFileName = await showPrompt('Yeni dosya adını girin (ör: script.html):');
                 if (newFileName) {
                     const fileExists = files.some(file => file.name === newFileName);
                     if (fileExists) {
