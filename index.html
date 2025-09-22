@@ -32,6 +32,18 @@
             transition: transform 0.3s ease-in-out;
             transform: translateX(-100%);
             z-index: 20;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            flex-direction: column;
+            padding: 1rem;
+        }
+        @media (min-width: 768px) {
+            .sidebar {
+                transform: translateX(0);
+                position: relative;
+            }
         }
         .sidebar.active {
             transform: translateX(0);
@@ -40,18 +52,6 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-        }
-        #code-editor {
-            flex-grow: 1;
-            width: 100%;
-            background-color: #0f172a;
-            color: #f8fafc;
-            font-family: monospace;
-            padding: 1rem;
-            resize: none;
-            outline: none;
-            border: none;
-            line-height: 1.5;
         }
         .file-item {
             cursor: pointer;
@@ -90,10 +90,53 @@
             justify-content: center;
             padding: 0.5rem;
         }
-        @media (min-width: 768px) {
-            .sidebar {
-                transform: translateX(0);
-            }
+        .tab-bar {
+            display: flex;
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+        }
+        .tab {
+            padding: 1rem 2rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+        .tab:hover {
+            background-color: #334155;
+        }
+        .tab.active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        .editor-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .editor-tab-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        .editor-tab-content.active {
+            display: flex;
+        }
+        #html-editor, #js-editor {
+            flex-grow: 1;
+            width: 100%;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: monospace;
+            padding: 1rem;
+            resize: none;
+            outline: none;
+            border: none;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -120,7 +163,22 @@
 
         <!-- Main Editor Area -->
         <main class="editor-area">
-            <textarea id="code-editor" spellcheck="false" class="bg-gray-900 text-gray-200 p-4"></textarea>
+            <!-- Tab Bar for HTML and JS -->
+            <div class="tab-bar">
+                <div id="html-tab" class="tab active">HTML</div>
+                <div id="js-tab" class="tab">JavaScript</div>
+            </div>
+            
+            <div class="editor-container">
+                <!-- HTML Editor -->
+                <div id="html-editor-container" class="editor-tab-content active">
+                    <textarea id="html-editor" spellcheck="false" class="bg-gray-900 text-gray-200 p-4"></textarea>
+                </div>
+                <!-- JavaScript Editor -->
+                <div id="js-editor-container" class="editor-tab-content">
+                    <textarea id="js-editor" spellcheck="false" class="bg-gray-900 text-gray-200 p-4"></textarea>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -161,25 +219,27 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const editor = document.getElementById('code-editor');
+            const htmlEditor = document.getElementById('html-editor');
+            const jsEditor = document.getElementById('js-editor');
+            const htmlTab = document.getElementById('html-tab');
+            const jsTab = document.getElementById('js-tab');
+            const htmlEditorContainer = document.getElementById('html-editor-container');
+            const jsEditorContainer = document.getElementById('js-editor-container');
             const fileListContainer = document.getElementById('file-list');
             const newFileBtn = document.getElementById('new-file-btn');
             const saveBtn = document.getElementById('save-btn');
             const runBtn = document.getElementById('run-btn');
             const sidebar = document.getElementById('sidebar');
             const toggleSidebarBtn = document.getElementById('toggle-sidebar');
-
-            // Message box elements
+            
             const messageBox = document.getElementById('message-box');
             const messageText = document.getElementById('message-text');
             const okBtn = document.getElementById('ok-btn');
 
             let files = [];
             let activeFileIndex = -1;
+            let activeTab = 'html';
 
-            // --- Utility Functions ---
-
-            // Custom modal for alerts/prompts
             const showMessage = (text) => {
                 return new Promise(resolve => {
                     messageText.textContent = text;
@@ -225,6 +285,7 @@
                 files.forEach((file, index) => {
                     const fileItem = document.createElement('div');
                     fileItem.className = `file-item rounded-lg mb-1 transition-all ${index === activeFileIndex ? 'active' : ''}`;
+                    fileItem.dataset.index = index;
                     fileItem.innerHTML = `<span class="icon">${getIconForFile(file.name)}</span> ${file.name}
                                           <button class="delete-btn" data-index="${index}">
                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -237,11 +298,18 @@
 
             const openFile = (index) => {
                 if (index < 0 || index >= files.length) return;
-                updateActiveFileContent(); // Save current file before switching
+                updateActiveFileContent();
                 activeFileIndex = index;
-                editor.value = files[activeFileIndex].content;
+                const file = files[activeFileIndex];
+                
+                // HTML ve JS içeriklerini ayırma
+                const htmlContentMatch = file.content.match(/<html[\s\S]*>([\s\S]*)<\/html>/);
+                const scriptContentMatch = file.content.match(/<script>([\s\S]*)<\/script>/);
+                
+                htmlEditor.value = htmlContentMatch ? `<html lang="tr">${htmlContentMatch[1]}</html>` : file.content;
+                jsEditor.value = scriptContentMatch ? scriptContentMatch[1] : '';
+
                 renderFileList();
-                // Close sidebar on mobile after selecting a file
                 if (window.innerWidth <= 768) {
                     sidebar.classList.remove('active');
                 }
@@ -249,28 +317,40 @@
 
             const updateActiveFileContent = () => {
                 if (activeFileIndex > -1) {
-                    files[activeFileIndex].content = editor.value;
+                    const htmlCode = htmlEditor.value;
+                    const jsCode = jsEditor.value;
+                    const combinedCode = htmlCode.replace(/<\/body>/, `<script>${jsCode}<\/script></body>`);
+                    files[activeFileIndex].content = combinedCode;
                     saveFilesToStorage();
                 }
             };
 
-            // --- Event Listeners ---
-            
             toggleSidebarBtn.addEventListener('click', () => {
                 sidebar.classList.toggle('active');
             });
 
             newFileBtn.addEventListener('click', () => {
-                const newFileName = prompt('Yeni dosya adını girin (ör: script.js):');
+                const newFileName = prompt('Yeni dosya adını girin (ör: script.html):');
                 if (newFileName) {
                     const fileExists = files.some(file => file.name === newFileName);
                     if (fileExists) {
                         showMessage('Bu isimde bir dosya zaten var.');
                         return;
                     }
+                    const newFileContent = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeni Sayfa</title>
+</head>
+<body>
+    <h1>Salam! Bu yeni fayldır.</h1>
+</body>
+</html>`;
                     files.push({
                         name: newFileName,
-                        content: ''
+                        content: newFileContent
                     });
                     saveFilesToStorage();
                     openFile(files.length - 1);
@@ -288,30 +368,33 @@
 
             runBtn.addEventListener('click', () => {
                 if (activeFileIndex > -1) {
-                    const activeFile = files[activeFileIndex];
-                    if (activeFile.name.endsWith('.html')) {
-                        const blob = new Blob([activeFile.content], { type: 'text/html' });
-                        const url = URL.createObjectURL(blob);
-                        window.open(url, '_blank');
-                    } else if (activeFile.name.endsWith('.js')) {
-                         try {
-                            const code = activeFile.content;
-                            // Güvenlik için eval() yerine yeni bir Function kullanmak daha iyidir.
-                            new Function(code)();
-                            showMessage('JavaScript kodunuz çalıştırıldı. Çıktıyı konsoldan kontrol edin.');
-                        } catch (e) {
-                            showMessage('Kod çalıştırılırken bir hata oluştu: ' + e.message);
-                            console.error(e);
-                        }
-                    } else if (activeFile.name.endsWith('.py')) {
-                        showMessage('Python dosyaları tarayıcıda doğrudan çalışmaz. Çıktıyı görmek için konsolu kontrol edin.');
-                    } else {
-                        showMessage('Sadece HTML ve JavaScript dosyaları çalıştırılabilir.');
-                    }
+                    const combinedCode = files[activeFileIndex].content;
+                    const blob = new Blob([combinedCode], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, '_blank');
+                } else {
+                    showMessage('Lütfen önce bir dosya oluşturun veya açın.');
                 }
             });
 
-            editor.addEventListener('input', updateActiveFileContent);
+            htmlEditor.addEventListener('input', updateActiveFileContent);
+            jsEditor.addEventListener('input', updateActiveFileContent);
+            
+            htmlTab.addEventListener('click', () => {
+                htmlTab.classList.add('active');
+                jsTab.classList.remove('active');
+                htmlEditorContainer.classList.add('active');
+                jsEditorContainer.classList.remove('active');
+                activeTab = 'html';
+            });
+
+            jsTab.addEventListener('click', () => {
+                jsTab.classList.add('active');
+                htmlTab.classList.remove('active');
+                jsEditorContainer.classList.add('active');
+                htmlEditorContainer.classList.remove('active');
+                activeTab = 'js';
+            });
 
             fileListContainer.addEventListener('click', async (event) => {
                 const item = event.target.closest('.file-item');
@@ -323,7 +406,8 @@
                     saveFilesToStorage();
                     if (activeFileIndex === index) {
                         activeFileIndex = -1;
-                        editor.value = '';
+                        htmlEditor.value = '';
+                        jsEditor.value = '';
                     } else if (activeFileIndex > index) {
                         activeFileIndex--;
                     }
@@ -334,13 +418,23 @@
                 }
             });
 
-            // --- Initial Setup ---
             loadFilesFromStorage();
             if (files.length === 0) {
-                // Başlangıçta boş bir dosya ekle
+                const newFileContent = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merhaba Dünya</title>
+</head>
+<body>
+    <h1>Salam Dünya!</h1>
+    <p>Bu sizin ilk faylınızdır.</p>
+</body>
+</html>`;
                 files.push({
-                    name: 'yeni-dosya.html',
-                    content: ''
+                    name: 'index.html',
+                    content: newFileContent
                 });
                 saveFilesToStorage();
             }
