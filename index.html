@@ -138,6 +138,16 @@
             border: none;
             line-height: 1.5;
         }
+        #preview {
+            flex-grow: 1;
+            background: white;
+            border-top: 1px solid #334155;
+        }
+        #preview-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 flex flex-col h-screen">
@@ -156,9 +166,7 @@
         <!-- Sidebar for File Explorer -->
         <aside id="sidebar" class="sidebar absolute md:relative flex flex-col p-4 z-10 top-0 left-0 bottom-0">
             <h2 class="text-lg font-semibold mb-4">Dosyalar</h2>
-            <div id="file-list" class="flex-grow overflow-y-auto">
-                <!-- Dosya öğeleri buraya eklenecek -->
-            </div>
+            <div id="file-list" class="flex-grow overflow-y-auto"></div>
         </aside>
 
         <!-- Main Editor Area -->
@@ -179,10 +187,15 @@
                     <textarea id="js-editor" spellcheck="false" class="bg-gray-900 text-gray-200 p-4"></textarea>
                 </div>
             </div>
+
+            <!-- Preview -->
+            <div id="preview">
+                <iframe id="preview-frame"></iframe>
+            </div>
         </main>
     </div>
 
-    <!-- Message box for alerts and prompts -->
+    <!-- Message box -->
     <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
             <div id="message-text" class="text-center text-lg mb-4"></div>
@@ -194,26 +207,16 @@
         </div>
     </div>
 
-    <!-- Bottom Bar - Controls -->
+    <!-- Bottom Bar -->
     <div class="bottom-bar">
         <div class="flex items-center space-x-4">
             <button id="new-file-btn" class="p-3 rounded-lg bg-gray-700 hover:bg-gray-600 focus:outline-none flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
                 Yeni Dosya
             </button>
             <button id="save-btn" class="p-3 rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v2m-4 0h0m-4 0h0" />
-                </svg>
                 Kaydet
             </button>
             <button id="run-btn" class="p-3 rounded-lg bg-green-600 hover:bg-green-700 focus:outline-none flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.26a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
                 Çalıştır
             </button>
         </div>
@@ -233,6 +236,7 @@
             const runBtn = document.getElementById('run-btn');
             const sidebar = document.getElementById('sidebar');
             const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+            const previewFrame = document.getElementById('preview-frame');
             
             const messageBox = document.getElementById('message-box');
             const messageText = document.getElementById('message-text');
@@ -251,7 +255,6 @@
                     okBtn.classList.remove('hidden');
                     confirmBtn.classList.add('hidden');
                     messageBox.classList.remove('hidden');
-
                     const handleOk = () => {
                         messageBox.classList.add('hidden');
                         okBtn.removeEventListener('click', handleOk);
@@ -269,7 +272,6 @@
                     okBtn.classList.add('hidden');
                     confirmBtn.classList.remove('hidden');
                     messageBox.classList.remove('hidden');
-
                     const handleConfirm = () => {
                         messageBox.classList.add('hidden');
                         confirmBtn.removeEventListener('click', handleConfirm);
@@ -295,7 +297,7 @@
                         files = JSON.parse(storedFiles);
                     }
                 } catch (e) {
-                    console.error("Dosyalar yüklenirken hata oluştu:", e);
+                    console.error("Dosyalar yüklenirken hata:", e);
                     files = [];
                 }
             };
@@ -308,14 +310,10 @@
                 fileListContainer.innerHTML = '';
                 files.forEach((file, index) => {
                     const fileItem = document.createElement('div');
-                    fileItem.className = `file-item rounded-lg mb-1 transition-all ${index === activeFileIndex ? 'active' : ''}`;
+                    fileItem.className = `file-item rounded-lg mb-1 ${index === activeFileIndex ? 'active' : ''}`;
                     fileItem.dataset.index = index;
                     fileItem.innerHTML = `<span class="icon">${getIconForFile(file.name)}</span> ${file.name}
-                                          <button class="delete-btn" data-index="${index}">
-                                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                              </svg>
-                                          </button>`;
+                        <button class="delete-btn" data-index="${index}">❌</button>`;
                     fileListContainer.appendChild(fileItem);
                 });
             };
@@ -325,18 +323,12 @@
                 updateActiveFileContent();
                 activeFileIndex = index;
                 const file = files[activeFileIndex];
-                
-                // HTML ve JS içeriklerini ayırma
                 const htmlContentMatch = file.content.match(/<html[\s\S]*>([\s\S]*)<\/html>/);
                 const scriptContentMatch = file.content.match(/<script>([\s\S]*)<\/script>/);
-                
                 htmlEditor.value = htmlContentMatch ? `<html lang="tr">${htmlContentMatch[1]}</html>` : file.content;
                 jsEditor.value = scriptContentMatch ? scriptContentMatch[1] : '';
-
                 renderFileList();
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('active');
-                }
+                if (window.innerWidth <= 768) sidebar.classList.remove('active');
             };
 
             const updateActiveFileContent = () => {
@@ -356,26 +348,12 @@
             newFileBtn.addEventListener('click', async () => {
                 const newFileName = await showPrompt('Yeni dosya adını girin (ör: script.html):');
                 if (newFileName) {
-                    const fileExists = files.some(file => file.name === newFileName);
-                    if (fileExists) {
-                        showMessage('Bu isimde bir dosya zaten var.');
+                    if (files.some(file => file.name === newFileName)) {
+                        showMessage('Bu isimde dosya var.');
                         return;
                     }
-                    const newFileContent = `<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yeni Sayfa</title>
-</head>
-<body>
-    <h1>Salam! Bu yeni fayldır.</h1>
-</body>
-</html>`;
-                    files.push({
-                        name: newFileName,
-                        content: newFileContent
-                    });
+                    const newFileContent = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Yeni</title></head><body><h1>Yeni Dosya</h1></body></html>`;
+                    files.push({ name: newFileName, content: newFileContent });
                     saveFilesToStorage();
                     openFile(files.length - 1);
                 }
@@ -384,26 +362,27 @@
             saveBtn.addEventListener('click', () => {
                 if (activeFileIndex > -1) {
                     updateActiveFileContent();
-                    showMessage('Değişiklikler kaydedildi!');
+                    showMessage('Kaydedildi!');
                 } else {
-                    showMessage('Lütfen önce bir dosya oluşturun veya açın.');
+                    showMessage('Önce bir dosya aç.');
                 }
             });
 
             runBtn.addEventListener('click', () => {
                 if (activeFileIndex > -1) {
+                    updateActiveFileContent();
                     const combinedCode = files[activeFileIndex].content;
                     const blob = new Blob([combinedCode], { type: 'text/html' });
                     const url = URL.createObjectURL(blob);
-                    window.open(url, '_blank');
+                    previewFrame.src = url;
                 } else {
-                    showMessage('Lütfen önce bir dosya oluşturun veya açın.');
+                    showMessage('Önce bir dosya aç.');
                 }
             });
 
             htmlEditor.addEventListener('input', updateActiveFileContent);
             jsEditor.addEventListener('input', updateActiveFileContent);
-            
+
             htmlTab.addEventListener('click', () => {
                 htmlTab.classList.add('active');
                 jsTab.classList.remove('active');
@@ -420,10 +399,9 @@
                 activeTab = 'js';
             });
 
-            fileListContainer.addEventListener('click', async (event) => {
+            fileListContainer.addEventListener('click', (event) => {
                 const item = event.target.closest('.file-item');
                 if (!item) return;
-                
                 if (event.target.closest('.delete-btn')) {
                     const index = parseInt(event.target.closest('.delete-btn').dataset.index, 10);
                     files.splice(index, 1);
@@ -432,33 +410,18 @@
                         activeFileIndex = -1;
                         htmlEditor.value = '';
                         jsEditor.value = '';
-                    } else if (activeFileIndex > index) {
-                        activeFileIndex--;
-                    }
+                    } else if (activeFileIndex > index) activeFileIndex--;
                     renderFileList();
                 } else {
-                    const index = parseInt(item.dataset.index, 10);
-                    openFile(index);
+                    openFile(parseInt(item.dataset.index, 10));
                 }
             });
 
             loadFilesFromStorage();
             if (files.length === 0) {
-                const newFileContent = `<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merhaba Dünya</title>
-</head>
-<body>
-    <h1>Salam Dünya!</h1>
-    <p>Bu sizin ilk faylınızdır.</p>
-</body>
-</html>`;
                 files.push({
                     name: 'index.html',
-                    content: newFileContent
+                    content: '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Merhaba Dünya</title></head><body><h1>Salam Dünya!</h1><p>İlk dosyanız.</p></body></html>'
                 });
                 saveFilesToStorage();
             }
