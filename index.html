@@ -1,1 +1,351 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobil Kod Düzenleyici</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .container {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 300px;
+            background-color: #1e293b;
+            border-right: 1px solid #334155;
+            flex-shrink: 0;
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(-100%);
+            z-index: 20;
+        }
+        .sidebar.active {
+            transform: translateX(0);
+        }
+        .editor-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #code-editor {
+            flex-grow: 1;
+            width: 100%;
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: monospace;
+            padding: 1rem;
+            resize: none;
+            outline: none;
+            border: none;
+            line-height: 1.5;
+        }
+        .file-item {
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 0.5rem;
+        }
+        .file-item:hover {
+            background-color: #334155;
+        }
+        .file-item.active {
+            background-color: #475569;
+            font-weight: bold;
+        }
+        .icon {
+            margin-right: 0.5rem;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ef4444;
+            padding: 0.5rem;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #fca5a5;
+        }
+        .bottom-bar {
+            background-color: #1e293b;
+            border-top: 1px solid #334155;
+            display: flex;
+            justify-content: center;
+            padding: 0.5rem;
+        }
+        @media (min-width: 768px) {
+            .sidebar {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex flex-col h-screen">
 
+    <!-- Top Bar - Title and Sidebar Toggle -->
+    <header class="bg-gray-800 p-2 flex items-center shadow-md z-10">
+        <button id="toggle-sidebar" class="p-2 rounded-lg hover:bg-gray-700 focus:outline-none md:hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+        </button>
+        <h1 class="text-xl font-bold ml-2">Mobil Kod Düzenleyici</h1>
+    </header>
+
+    <div class="container relative">
+        <!-- Sidebar for File Explorer -->
+        <aside id="sidebar" class="sidebar absolute md:relative flex flex-col p-4 z-10 top-0 left-0 bottom-0">
+            <h2 class="text-lg font-semibold mb-4">Dosyalar</h2>
+            <div id="file-list" class="flex-grow overflow-y-auto">
+                <!-- Dosya öğeleri buraya eklenecek -->
+            </div>
+        </aside>
+
+        <!-- Main Editor Area -->
+        <main class="editor-area">
+            <textarea id="code-editor" spellcheck="false" class="bg-gray-900 text-gray-200 p-4"></textarea>
+        </main>
+    </div>
+
+    <!-- Bottom Bar - Controls -->
+    <div class="bottom-bar">
+        <div class="flex items-center space-x-4">
+            <button id="new-file-btn" class="p-3 rounded-lg bg-gray-700 hover:bg-gray-600 focus:outline-none flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Yeni Dosya
+            </button>
+            <button id="save-btn" class="p-3 rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v2m-4 0h0m-4 0h0" />
+                </svg>
+                Kaydet
+            </button>
+            <button id="run-btn" class="p-3 rounded-lg bg-green-600 hover:bg-green-700 focus:outline-none flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.26a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Çalıştır
+            </button>
+        </div>
+    </div>
+
+    <!-- Message box for alerts -->
+    <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <div id="message-text" class="text-center text-lg mb-4"></div>
+            <div class="flex justify-center space-x-4">
+                <button id="ok-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none">Tamam</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const editor = document.getElementById('code-editor');
+            const fileListContainer = document.getElementById('file-list');
+            const newFileBtn = document.getElementById('new-file-btn');
+            const saveBtn = document.getElementById('save-btn');
+            const runBtn = document.getElementById('run-btn');
+            const sidebar = document.getElementById('sidebar');
+            const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+
+            // Message box elements
+            const messageBox = document.getElementById('message-box');
+            const messageText = document.getElementById('message-text');
+            const okBtn = document.getElementById('ok-btn');
+
+            let files = [];
+            let activeFileIndex = -1;
+
+            // --- Utility Functions ---
+
+            // Custom modal for alerts/prompts
+            const showMessage = (text) => {
+                return new Promise(resolve => {
+                    messageText.textContent = text;
+                    okBtn.style.display = 'inline-block';
+                    messageBox.classList.remove('hidden');
+
+                    const handleOk = () => {
+                        messageBox.classList.add('hidden');
+                        okBtn.removeEventListener('click', handleOk);
+                        resolve(true);
+                    };
+                    okBtn.addEventListener('click', handleOk);
+                });
+            };
+
+            const getIconForFile = (filename) => {
+                if (filename.endsWith('.html')) return '📄';
+                if (filename.endsWith('.js') || filename.endsWith('.jsx')) return '🚀';
+                if (filename.endsWith('.py')) return '🐍';
+                if (filename.endsWith('.md')) return '📝';
+                if (filename.endsWith('.css')) return '🎨';
+                return '📁';
+            };
+
+            const loadFilesFromStorage = () => {
+                try {
+                    const storedFiles = localStorage.getItem('code_editor_files');
+                    if (storedFiles) {
+                        files = JSON.parse(storedFiles);
+                    }
+                } catch (e) {
+                    console.error("Dosyalar yüklenirken hata oluştu:", e);
+                    files = [];
+                }
+            };
+
+            const saveFilesToStorage = () => {
+                localStorage.setItem('code_editor_files', JSON.stringify(files));
+            };
+
+            const renderFileList = () => {
+                fileListContainer.innerHTML = '';
+                files.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = `file-item rounded-lg mb-1 transition-all ${index === activeFileIndex ? 'active' : ''}`;
+                    fileItem.innerHTML = `<span class="icon">${getIconForFile(file.name)}</span> ${file.name}
+                                          <button class="delete-btn" data-index="${index}">
+                                              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                              </svg>
+                                          </button>`;
+                    fileListContainer.appendChild(fileItem);
+                });
+            };
+
+            const openFile = (index) => {
+                if (index < 0 || index >= files.length) return;
+                updateActiveFileContent(); // Save current file before switching
+                activeFileIndex = index;
+                editor.value = files[activeFileIndex].content;
+                renderFileList();
+                // Close sidebar on mobile after selecting a file
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('active');
+                }
+            };
+
+            const updateActiveFileContent = () => {
+                if (activeFileIndex > -1) {
+                    files[activeFileIndex].content = editor.value;
+                    saveFilesToStorage();
+                }
+            };
+
+            // --- Event Listeners ---
+            
+            toggleSidebarBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
+
+            newFileBtn.addEventListener('click', () => {
+                const newFileName = prompt('Yeni dosya adını girin (ör: script.js):');
+                if (newFileName) {
+                    const fileExists = files.some(file => file.name === newFileName);
+                    if (fileExists) {
+                        showMessage('Bu isimde bir dosya zaten var.');
+                        return;
+                    }
+                    files.push({
+                        name: newFileName,
+                        content: ''
+                    });
+                    saveFilesToStorage();
+                    openFile(files.length - 1);
+                }
+            });
+
+            saveBtn.addEventListener('click', () => {
+                if (activeFileIndex > -1) {
+                    updateActiveFileContent();
+                    showMessage('Değişiklikler kaydedildi!');
+                } else {
+                    showMessage('Lütfen önce bir dosya oluşturun veya açın.');
+                }
+            });
+
+            runBtn.addEventListener('click', () => {
+                if (activeFileIndex > -1) {
+                    const activeFile = files[activeFileIndex];
+                    if (activeFile.name.endsWith('.html')) {
+                        const blob = new Blob([activeFile.content], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                    } else if (activeFile.name.endsWith('.js')) {
+                         try {
+                            const code = activeFile.content;
+                            // Güvenlik için eval() yerine yeni bir Function kullanmak daha iyidir.
+                            new Function(code)();
+                            showMessage('JavaScript kodunuz çalıştırıldı. Çıktıyı konsoldan kontrol edin.');
+                        } catch (e) {
+                            showMessage('Kod çalıştırılırken bir hata oluştu: ' + e.message);
+                            console.error(e);
+                        }
+                    } else if (activeFile.name.endsWith('.py')) {
+                        showMessage('Python dosyaları tarayıcıda doğrudan çalışmaz. Çıktıyı görmek için konsolu kontrol edin.');
+                    } else {
+                        showMessage('Sadece HTML ve JavaScript dosyaları çalıştırılabilir.');
+                    }
+                }
+            });
+
+            editor.addEventListener('input', updateActiveFileContent);
+
+            fileListContainer.addEventListener('click', async (event) => {
+                const item = event.target.closest('.file-item');
+                if (!item) return;
+                
+                if (event.target.closest('.delete-btn')) {
+                    const index = parseInt(event.target.closest('.delete-btn').dataset.index, 10);
+                    files.splice(index, 1);
+                    saveFilesToStorage();
+                    if (activeFileIndex === index) {
+                        activeFileIndex = -1;
+                        editor.value = '';
+                    } else if (activeFileIndex > index) {
+                        activeFileIndex--;
+                    }
+                    renderFileList();
+                } else {
+                    const index = parseInt(item.dataset.index, 10);
+                    openFile(index);
+                }
+            });
+
+            // --- Initial Setup ---
+            loadFilesFromStorage();
+            if (files.length === 0) {
+                // Başlangıçta boş bir dosya ekle
+                files.push({
+                    name: 'yeni-dosya.html',
+                    content: ''
+                });
+                saveFilesToStorage();
+            }
+            openFile(0);
+        });
+    </script>
+</body>
+</html>
