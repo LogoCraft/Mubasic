@@ -14,6 +14,7 @@
         body {
             background-color: #f0f2f5;
             overflow-x: hidden;
+            margin: 0;
         }
         #document-content {
             display: flex;
@@ -25,20 +26,28 @@
             width: var(--a4-width);
             min-height: var(--a4-height);
             background: white;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             margin-bottom: 30px;
             position: relative;
             padding: 20mm;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        /* Aktiv səhifəni vizual olaraq göstər */
+        .page-container.active-page {
+            border-color: #3b82f6;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.2);
         }
         .element-wrapper {
             position: absolute;
             cursor: move;
             border: 1px solid transparent;
             padding: 5px;
-            user-select: none;
+            z-index: 10;
         }
         .element-wrapper:hover, .element-wrapper.active {
             border: 1px dashed #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
         }
         .toolbar-inline {
             position: absolute;
@@ -73,18 +82,18 @@
         }
         .page-label {
             position: absolute;
-            left: -60px;
+            left: -80px;
             top: 20px;
-            background: #94a3b8;
+            background: #64748b;
             color: white;
-            padding: 4px 8px;
+            padding: 4px 12px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
         }
         @media print {
             .no-print { display: none !important; }
-            .page-container { margin: 0; box-shadow: none; }
+            .page-container { margin: 0; box-shadow: none; border: none; }
             body { background: white; }
         }
     </style>
@@ -99,33 +108,33 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
             </div>
-            <div class="flex gap-2">
-                <button onclick="addElement('text')" class="flex items-center gap-2 hover:bg-slate-100 px-4 py-2 rounded-md transition">
-                    <span class="text-xl">T</span> Mətn
+            <div class="flex gap-1">
+                <button onclick="addElement('text')" class="flex items-center gap-2 hover:bg-blue-50 text-blue-700 px-4 py-2 rounded-md transition font-medium">
+                    <span class="text-xl font-bold">T</span> Mətn Əlavə Et
                 </button>
-                <button onclick="document.getElementById('imgInput').click()" class="flex items-center gap-2 hover:bg-slate-100 px-4 py-2 rounded-md transition">
-                    <span>🖼️</span> Şəkil
+                <button onclick="document.getElementById('imgInput').click()" class="flex items-center gap-2 hover:bg-emerald-50 text-emerald-700 px-4 py-2 rounded-md transition font-medium">
+                    <span>🖼️</span> Şəkil Seç
                 </button>
                 <input type="file" id="imgInput" class="hidden" accept="image/*" onchange="handleImage(event)">
             </div>
             <div class="h-8 w-[1px] bg-slate-200"></div>
-            <button onclick="addNewPage()" class="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-md transition font-medium">
-                📄 Yeni Səhifə
+            <button onclick="addNewPage()" class="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-md transition font-semibold">
+                📄 + Yeni Səhifə
             </button>
         </div>
 
-        <button onclick="downloadPDF()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition flex items-center gap-2">
-            💾 PDF Yüklə
-        </button>
+        <div class="flex items-center gap-4">
+            <span id="active-page-status" class="text-xs font-bold text-slate-400 uppercase tracking-widest">Səhifə 1 aktivdir</span>
+            <button onclick="downloadPDF()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition flex items-center gap-2">
+                💾 PDF Yüklə
+            </button>
+        </div>
     </nav>
 
     <div id="document-content">
         <!-- İlk Səhifə -->
-        <div class="page-container" id="page-1">
+        <div class="page-container active-page" id="page-1" onclick="selectPage(this)">
             <span class="page-label no-print">Səhifə 1</span>
-            <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none select-none">
-                <h1 class="text-6xl font-black rotate-45 border-8 border-slate-900 p-10">DRAFT</h1>
-            </div>
         </div>
     </div>
 
@@ -134,11 +143,16 @@
         let lastSelectedPage = document.getElementById('page-1');
         let activeEl = null;
 
-        // Səhifə seçimi
+        // Səhifəni seçmək funksiyası
+        function selectPage(pageEl) {
+            document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active-page'));
+            pageEl.classList.add('active-page');
+            lastSelectedPage = pageEl;
+            document.getElementById('active-page-status').innerText = `Səhifə ${pageEl.id.split('-')[1]} aktivdir`;
+        }
+
+        // Elementi seçmək (sürükləmə üçün)
         document.addEventListener('mousedown', (e) => {
-            const page = e.target.closest('.page-container');
-            if (page) lastSelectedPage = page;
-            
             const wrapper = e.target.closest('.element-wrapper');
             if (activeEl) activeEl.classList.remove('active');
             if (wrapper) {
@@ -152,17 +166,22 @@
             const newPage = document.createElement('div');
             newPage.className = 'page-container';
             newPage.id = `page-${pageCount}`;
+            newPage.onclick = function() { selectPage(this); };
             newPage.innerHTML = `<span class="page-label no-print">Səhifə ${pageCount}</span>`;
             document.getElementById('document-content').appendChild(newPage);
-            lastSelectedPage = newPage;
-            newPage.scrollIntoView({ behavior: 'smooth' });
+            
+            // Yeni səhifəni avtomatik seç və ora sürüş
+            selectPage(newPage);
+            newPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function addElement(type, data = null) {
             const wrapper = document.createElement('div');
-            wrapper.className = 'element-wrapper';
+            wrapper.className = 'element-wrapper active';
+            
+            // Həmişə aktiv səhifənin yuxarısında (padding-i nəzərə alaraq) yerləşdir
             wrapper.style.left = '50px';
-            wrapper.style.top = '100px';
+            wrapper.style.top = '50px';
 
             const toolbar = document.createElement('div');
             toolbar.className = 'toolbar-inline no-print';
@@ -172,24 +191,25 @@
                 toolbar.innerHTML = `
                     <button onclick="format('bold')" class="text-white px-2 hover:bg-slate-700 rounded font-bold">B</button>
                     <button onclick="format('italic')" class="text-white px-2 hover:bg-slate-700 rounded italic">I</button>
-                    <button onclick="updateSize(2)" class="text-white px-2 hover:bg-slate-700 rounded">A+</button>
-                    <button onclick="updateSize(-2)" class="text-white px-2 hover:bg-slate-700 rounded">A-</button>
+                    <button onclick="updateSize(2)" class="text-white px-2 hover:bg-slate-700 rounded text-lg">A+</button>
+                    <button onclick="updateSize(-2)" class="text-white px-2 hover:bg-slate-700 rounded text-sm">A-</button>
                     <input type="color" onchange="updateColor(this)" class="w-6 h-6 bg-transparent border-none cursor-pointer">
-                    <button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded ml-2">🗑️</button>
+                    <div class="w-[1px] h-4 bg-slate-600 mx-1"></div>
+                    <button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded">🗑️</button>
                 `;
                 content = document.createElement('div');
                 content.contentEditable = true;
-                content.innerText = 'Bura klikləyib yazın...';
-                content.style.fontSize = '18px';
-                content.style.minWidth = '150px';
+                content.innerText = 'Mətni bura yazın...';
+                content.style.fontSize = '20px';
+                content.style.minWidth = '180px';
                 content.style.outline = 'none';
                 content.className = 'text-content';
             } else {
-                toolbar.innerHTML = `<button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded">🗑️ Sil</button>`;
+                toolbar.innerHTML = `<button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded">🗑️ Şəkli Sil</button>`;
                 content = document.createElement('img');
                 content.src = data;
-                content.className = 'w-full h-auto pointer-events-none';
-                wrapper.style.width = '200px';
+                content.className = 'w-full h-auto pointer-events-none select-none';
+                wrapper.style.width = '250px';
             }
 
             const handle = document.createElement('div');
@@ -199,8 +219,16 @@
             wrapper.appendChild(content);
             wrapper.appendChild(handle);
             
+            if (activeEl) activeEl.classList.remove('active');
+            activeEl = wrapper;
+            
             initDragAndResize(wrapper);
             lastSelectedPage.appendChild(wrapper);
+            
+            // Əgər mətndirsə birbaşa fokusla
+            if(type === 'text') {
+                setTimeout(() => content.focus(), 10);
+            }
         }
 
         function handleImage(e) {
@@ -209,10 +237,10 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => addElement('image', ev.target.result);
                 reader.readAsDataURL(file);
+                e.target.value = ''; // Yenidən eyni şəkli seçmək üçün təmizlə
             }
         }
 
-        // Format funksiyaları
         function format(cmd) {
             document.execCommand(cmd, false, null);
         }
@@ -232,7 +260,6 @@
             if (textEl) textEl.style.color = input.value;
         }
 
-        // Draggable & Resizable Məntiqi (YENİLƏNİB)
         function initDragAndResize(el) {
             let isDragging = false;
             let isResizing = false;
@@ -242,8 +269,10 @@
                 if (e.target.classList.contains('resize-handle')) {
                     isResizing = true;
                     e.preventDefault();
-                } else if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON') {
+                } else if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
                     isDragging = true;
+                    // Sürükləyəndə avtomatik həmin səhifəni də seç
+                    selectPage(el.parentElement);
                 } else {
                     return;
                 }
@@ -280,15 +309,15 @@
         }
 
         async function downloadPDF() {
-            // Aktiv seleksiyanı təmizlə
             if (activeEl) activeEl.classList.remove('active');
+            document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active-page'));
             
             const element = document.getElementById('document-content');
             const opt = {
                 margin: 0,
-                filename: 'senet.pdf',
+                filename: 'senet_redakte.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
+                html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                 pagebreak: { mode: ['css', 'legacy'] }
             };
@@ -300,6 +329,7 @@
                 await html2pdf().set(opt).from(element).save();
             } finally {
                 pages.forEach(p => p.style.pageBreakBefore = 'auto');
+                if(lastSelectedPage) lastSelectedPage.classList.add('active-page');
             }
         }
     </script>
