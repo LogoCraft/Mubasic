@@ -1,351 +1,678 @@
 <!DOCTYPE html>
-<html lang="az">
+<html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Redaktor Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style>
-        :root {
-            --a4-width: 210mm;
-            --a4-height: 297mm;
-        }
-        body {
-            background-color: #f0f2f5;
-            overflow-x: hidden;
-            margin: 0;
-            padding: 0;
-        }
-        #document-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 0;
-        }
-        .page-container {
-            width: var(--a4-width);
-            height: var(--a4-height);
-            background: white;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            position: relative;
-            padding: 0;
-            border: 1px solid transparent;
-            transition: all 0.3s;
-            overflow: hidden;
-            box-sizing: border-box;
-        }
-        .page-container.active-page {
-            border: 2px solid #3b82f6;
-            box-shadow: 0 0 25px rgba(59, 130, 246, 0.2);
-        }
-        .element-wrapper {
-            position: absolute;
-            cursor: move;
-            border: 1px solid transparent;
-            padding: 5px;
-            z-index: 10;
-            box-sizing: border-box;
-        }
-        .element-wrapper:hover, .element-wrapper.active {
-            border: 1px dashed #3b82f6;
-            background: rgba(59, 130, 246, 0.02);
-        }
-        .toolbar-inline {
-            position: absolute;
-            top: -45px;
-            left: 0;
-            background: #1e293b;
-            border-radius: 6px;
-            padding: 5px 10px;
-            display: none;
-            gap: 8px;
-            align-items: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 100;
-        }
-        .element-wrapper:hover .toolbar-inline, .element-wrapper.active .toolbar-inline {
-            display: flex;
-        }
-        .resize-handle {
-            width: 12px;
-            height: 12px;
-            background: #3b82f6;
-            border: 2px solid white;
-            position: absolute;
-            bottom: -6px;
-            right: -6px;
-            cursor: nwse-resize;
-            border-radius: 50%;
-            display: none;
-        }
-        .element-wrapper:hover .resize-handle, .element-wrapper.active .resize-handle {
-            display: block;
-        }
-        .page-label {
-            position: absolute;
-            left: -80px;
-            top: 10px;
-            background: #64748b;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: bold;
-        }
-        @media print {
-            .no-print { display: none !important; }
-            #document-content { padding: 0; margin: 0; }
-            .page-container { margin: 0; box-shadow: none; border: none; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow — PDF Editör</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1612;
+    --ink-light: #4a4540;
+    --paper: #faf9f7;
+    --paper-shadow: #f0ede8;
+    --cream: #f5f2ec;
+    --accent: #c8621a;
+    --accent-light: #e8833a;
+    --gold: #d4a853;
+    --toolbar-bg: #2c2825;
+    --toolbar-border: #3d3830;
+    --page-width: 794px;
+    --page-height: 1123px;
+    --page-padding: 80px;
+  }
+
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: #1e1c19;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  /* ── TOOLBAR ── */
+  #toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--toolbar-border);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-height: 52px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+  }
+
+  .toolbar-brand {
+    font-family: 'Playfair Display', serif;
+    color: var(--gold);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-right: 12px;
+    padding-right: 12px;
+    border-right: 1px solid var(--toolbar-border);
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    border-right: 1px solid var(--toolbar-border);
+  }
+  .toolbar-group:last-child { border-right: none; }
+
+  .tb-btn {
+    background: transparent;
+    border: none;
+    color: #c8c2b8;
+    cursor: pointer;
+    padding: 6px 9px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .tb-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .tb-btn.active { background: rgba(200,98,26,0.25); color: var(--accent-light); }
+  .tb-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .tb-select {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--toolbar-border);
+    color: #c8c2b8;
+    padding: 5px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .tb-select:focus { outline: none; border-color: var(--accent); }
+
+  .tb-sep { width: 1px; height: 24px; background: var(--toolbar-border); margin: 0 4px; }
+
+  /* color picker mini */
+  .color-picker-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .color-swatch {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    border: 2px solid #555;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .color-swatch input[type=color] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Export button */
+  #exportBtn {
+    margin-left: auto;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  #exportBtn:hover { background: var(--accent-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(200,98,26,0.4); }
+  #exportBtn:active { transform: translateY(0); }
+  #exportBtn svg { width: 15px; height: 15px; }
+
+  /* ── WORKSPACE ── */
+  #workspace {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px 20px 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  /* ── PAGES ── */
+  .page {
+    width: var(--page-width);
+    min-height: var(--page-height);
+    background: var(--paper);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5), 0 1px 6px rgba(0,0,0,0.3);
+    padding: var(--page-padding);
+    position: relative;
+    outline: none;
+    color: var(--ink);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 14pt;
+    line-height: 1.75;
+    word-break: break-word;
+    transition: box-shadow 0.2s;
+    border-radius: 1px;
+  }
+  .page:focus { box-shadow: 0 4px 30px rgba(0,0,0,0.5), 0 0 0 2px var(--accent); }
+  .page[contenteditable] { cursor: text; }
+
+  /* Page watermark lines (like ruled paper — subtle) */
+  .page::before {
+    content: '';
+    position: absolute;
+    left: var(--page-padding);
+    right: var(--page-padding);
+    top: var(--page-padding);
+    bottom: var(--page-padding);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent calc(1.75em * 14pt / 10 - 1px),
+      #e8e4dc calc(1.75em * 14pt / 10 - 1px),
+      #e8e4dc calc(1.75em * 14pt / 10)
+    );
+    pointer-events: none;
+    opacity: 0.35;
+  }
+
+  /* page number */
+  .page-num {
+    position: absolute;
+    bottom: 28px;
+    width: 100%;
+    left: 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #b0a898;
+    pointer-events: none;
+    letter-spacing: 1px;
+  }
+
+  /* ── ADD PAGE BUTTON ── */
+  #addPageBtn {
+    width: var(--page-width);
+    height: 54px;
+    border: 2px dashed #3d3830;
+    background: transparent;
+    color: #6b6460;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    margin-top: 0;
+  }
+  #addPageBtn:hover { border-color: var(--accent); color: var(--accent-light); background: rgba(200,98,26,0.05); }
+
+  /* ── STATUS BAR ── */
+  #statusBar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 28px;
+    background: var(--toolbar-bg);
+    border-top: 1px solid var(--toolbar-border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #6b6460;
+    z-index: 50;
+  }
+  #statusBar span { color: #9b9490; }
+
+  /* ── LOADING OVERLAY ── */
+  #loadingOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20,18,16,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 999;
+    backdrop-filter: blur(4px);
+  }
+  #loadingOverlay.show { display: flex; }
+  .loader-ring {
+    width: 48px; height: 48px;
+    border: 3px solid #3d3830;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-text {
+    font-family: 'Playfair Display', serif;
+    color: #c8c2b8;
+    font-size: 15px;
+  }
+
+  /* ── TYPOGRAPHY STYLES in pages ── */
+  .page h1 { font-family: 'Playfair Display', serif; font-size: 26pt; font-weight: 700; line-height: 1.2; margin-bottom: 0.4em; color: var(--ink); }
+  .page h2 { font-family: 'Playfair Display', serif; font-size: 20pt; font-weight: 600; line-height: 1.3; margin-bottom: 0.3em; color: var(--ink); }
+  .page h3 { font-family: 'Playfair Display', serif; font-size: 15pt; font-weight: 600; margin-bottom: 0.3em; color: var(--ink-light); }
+  .page p { margin-bottom: 0.8em; }
+  .page ul, .page ol { padding-left: 1.6em; margin-bottom: 0.8em; }
+  .page blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 8px 16px;
+    margin: 12px 0;
+    color: var(--ink-light);
+    font-style: italic;
+    background: rgba(200,98,26,0.05);
+  }
+  .page hr { border: none; border-top: 1px solid #d4cec6; margin: 16px 0; }
+
+  /* selection style */
+  ::selection { background: rgba(200,98,26,0.2); }
+
+  @media (max-width: 860px) {
+    :root { --page-width: 95vw; --page-padding: 32px; }
+    #addPageBtn { width: 95vw; }
+  }
+</style>
 </head>
-<body class="text-slate-800">
+<body>
 
-    <nav class="no-print bg-white border-b border-slate-200 p-3 sticky top-0 z-[1000] flex items-center justify-between shadow-sm px-10">
-        <div class="flex items-center gap-6">
-            <div class="bg-blue-600 text-white p-2 rounded shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-            </div>
-            <div class="flex gap-1">
-                <button onclick="addElement('text')" class="flex items-center gap-2 hover:bg-blue-50 text-blue-700 px-4 py-2 rounded-md transition font-medium">
-                    <span class="text-xl font-bold">T</span> Mətn Əlavə Et
-                </button>
-                <button onclick="document.getElementById('imgInput').click()" class="flex items-center gap-2 hover:bg-emerald-50 text-emerald-700 px-4 py-2 rounded-md transition font-medium">
-                    <span>🖼️</span> Şəkil Seç
-                </button>
-                <input type="file" id="imgInput" class="hidden" accept="image/*" onchange="handleImage(event)">
-            </div>
-            <div class="h-8 w-[1px] bg-slate-200"></div>
-            <button onclick="addNewPage()" class="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-md transition font-semibold">
-                📄 + Yeni Səhifə
-            </button>
-        </div>
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <span class="toolbar-brand">DocFlow</span>
 
-        <div class="flex items-center gap-4">
-            <span id="active-page-status" class="text-xs font-bold text-slate-400 uppercase tracking-widest">Səhifə 1 aktivdir</span>
-            <button onclick="downloadPDF()" id="downloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition flex items-center gap-2">
-                💾 PDF Yüklə
-            </button>
-        </div>
-    </nav>
+  <!-- Undo/Redo -->
+  <div class="toolbar-group">
+    <button class="tb-btn" onclick="document.execCommand('undo')" title="Geri Al (Ctrl+Z)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+    </button>
+    <button class="tb-btn" onclick="document.execCommand('redo')" title="İleri Al (Ctrl+Y)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+    </button>
+  </div>
 
-    <div id="document-content">
-        <div class="page-container active-page" id="page-1" onclick="selectPage(this)">
-            <span class="page-label no-print">Səhifə 1</span>
-        </div>
+  <!-- Font & Size -->
+  <div class="toolbar-group">
+    <select class="tb-select" id="fontFamily" onchange="applyFont(this.value)" title="Yazı Tipi">
+      <option value="'Source Serif 4', Georgia, serif">Source Serif</option>
+      <option value="'Playfair Display', serif">Playfair Display</option>
+      <option value="Georgia, serif">Georgia</option>
+      <option value="'Times New Roman', serif">Times New Roman</option>
+      <option value="Arial, sans-serif">Arial</option>
+      <option value="'JetBrains Mono', monospace">Mono</option>
+    </select>
+    <select class="tb-select" id="fontSize" onchange="applySize(this.value)" title="Boyut">
+      <option value="10pt">10</option>
+      <option value="11pt">11</option>
+      <option value="12pt">12</option>
+      <option value="14pt" selected>14</option>
+      <option value="16pt">16</option>
+      <option value="18pt">18</option>
+      <option value="20pt">20</option>
+      <option value="24pt">24</option>
+      <option value="28pt">28</option>
+      <option value="36pt">36</option>
+    </select>
+  </div>
+
+  <!-- Formatting -->
+  <div class="toolbar-group">
+    <button class="tb-btn" id="boldBtn" onclick="fmt('bold')" title="Kalın (Ctrl+B)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h8a4 4 0 0 1 0 8H6V4zm0 8h9a4 4 0 0 1 0 8H6v-8z"/></svg></button>
+    <button class="tb-btn" id="italicBtn" onclick="fmt('italic')" title="İtalik (Ctrl+I)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4h4l-4 16H6l4-16zM14 4h4M6 20h4"/><line x1="14" y1="4" x2="10" y2="20" stroke="currentColor" stroke-width="2" fill="none"/></svg></button>
+    <button class="tb-btn" id="underlineBtn" onclick="fmt('underline')" title="Altı Çizili (Ctrl+U)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4v6a6 6 0 0 0 12 0V4M4 20h16"/></svg></button>
+    <button class="tb-btn" id="strikeBtn" onclick="fmt('strikeThrough')" title="Üstü Çizili"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="12" x2="20" y2="12"/><path d="M17.5 5.5c-.77-.77-1.86-1-3-.5-1.35.6-2 2-1.5 3.5"/><path d="M10 18c1.5.5 3 0 4-1s1-2.5 0-3.5"/></svg></button>
+  </div>
+
+  <!-- Color -->
+  <div class="toolbar-group">
+    <div class="color-picker-wrap" title="Yazı Rengi">
+      <div class="color-swatch" id="textColorSwatch" style="background:#1a1612;">
+        <input type="color" id="textColorPicker" value="#1a1612" oninput="applyTextColor(this.value)" onchange="applyTextColor(this.value)">
+      </div>
     </div>
+    <div class="color-picker-wrap" title="Arka Plan Rengi" style="margin-left:4px;">
+      <div class="color-swatch" id="bgColorSwatch" style="background:#ffffff;border-color:#888;">
+        <input type="color" id="bgColorPicker" value="#ffffff" oninput="applyBgColor(this.value)" onchange="applyBgColor(this.value)">
+      </div>
+    </div>
+  </div>
 
-    <script>
-        let pageCount = 1;
-        let lastSelectedPage = document.getElementById('page-1');
-        let activeEl = null;
+  <!-- Alignment -->
+  <div class="toolbar-group">
+    <button class="tb-btn" onclick="fmt('justifyLeft')" title="Sola Hizala">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+    </button>
+    <button class="tb-btn" onclick="fmt('justifyCenter')" title="Ortala">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    </button>
+    <button class="tb-btn" onclick="fmt('justifyRight')" title="Sağa Hizala">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <button class="tb-btn" onclick="fmt('justifyFull')" title="İki Yana Hizala">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
 
-        function selectPage(pageEl) {
-            document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active-page'));
-            pageEl.classList.add('active-page');
-            lastSelectedPage = pageEl;
-            document.getElementById('active-page-status').innerText = `Səhifə ${pageEl.id.split('-')[1]} aktivdir`;
-        }
+  <!-- Lists & Headings -->
+  <div class="toolbar-group">
+    <button class="tb-btn" onclick="fmt('insertUnorderedList')" title="Madde İşareti">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+    </button>
+    <button class="tb-btn" onclick="fmt('insertOrderedList')" title="Numaralı Liste">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="2" y="8" font-size="6" fill="currentColor" stroke="none">1.</text><text x="2" y="14" font-size="6" fill="currentColor" stroke="none">2.</text></svg>
+    </button>
+    <select class="tb-select" onchange="applyHeading(this.value); this.value=''" title="Başlık Stili">
+      <option value="">Stil...</option>
+      <option value="h1">Başlık 1</option>
+      <option value="h2">Başlık 2</option>
+      <option value="h3">Başlık 3</option>
+      <option value="p">Paragraf</option>
+      <option value="blockquote">Alıntı</option>
+    </select>
+  </div>
 
-        document.addEventListener('mousedown', (e) => {
-            const wrapper = e.target.closest('.element-wrapper');
-            if (activeEl && !e.target.closest('.toolbar-inline')) activeEl.classList.remove('active');
-            if (wrapper) {
-                activeEl = wrapper;
-                activeEl.classList.add('active');
-            }
+  <!-- Indent -->
+  <div class="toolbar-group">
+    <button class="tb-btn" onclick="fmt('outdent')" title="Girintiyi Azalt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+    <button class="tb-btn" onclick="fmt('indent')" title="Girinti Ekle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 17 18 12 13 7"/><line x1="18" y1="12" x2="6" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+  </div>
+
+  <!-- Remove Page -->
+  <div class="toolbar-group">
+    <button class="tb-btn" onclick="removePage()" title="Aktif Sayfayı Sil" style="color:#e05050;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      Sayfa Sil
+    </button>
+  </div>
+
+  <!-- Export -->
+  <button id="exportBtn" onclick="exportPDF()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+    PDF'e Aktar
+  </button>
+</div>
+
+<!-- WORKSPACE -->
+<div id="workspace">
+  <!-- pages rendered here -->
+</div>
+<button id="addPageBtn" onclick="addPage()">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+  Yeni Sayfa Ekle
+</button>
+
+<!-- STATUS BAR -->
+<div id="statusBar">
+  <div>Sayfa <span id="activePgNum">1</span> / <span id="totalPgNum">1</span></div>
+  <div>Kelime: <span id="wordCount">0</span></div>
+  <div>Karakter: <span id="charCount">0</span></div>
+  <div style="margin-left:auto; font-size:10px; color:#4a4540;">DocFlow PDF Editör</div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay">
+  <div class="loader-ring"></div>
+  <div class="loader-text">PDF oluşturuluyor...</div>
+</div>
+
+<script>
+  // ── State ──
+  let pages = [];
+  let activePage = null;
+
+  // ── Init ──
+  function init() {
+    addPage();
+    // sample content on first page
+    const firstPage = pages[0];
+    firstPage.innerHTML = `<h1>Doküman Başlığı</h1>
+<p>Buraya istediğiniz metni yazabilirsiniz. <strong>Kalın</strong>, <em>italik</em> ve <u>altı çizili</u> formatlamalar kullanabilirsiniz.</p>
+<p>Bu editör tam sayfalı çalışır — yazdığınız sayfa kadar PDF çıkar, fazlası olmaz.</p>
+<blockquote>Güzel bir alıntı buraya gelir. Kenar çizgisi ile vurgulanır.</blockquote>
+<p>Üstteki araç çubuğundan yeni sayfa ekleyebilir, başlık stilleri, listeler ve renkler uygulayabilirsiniz.</p>`;
+    updateStatus();
+  }
+
+  // ── Page Management ──
+  function addPage() {
+    const workspace = document.getElementById('workspace');
+    const div = document.createElement('div');
+    div.className = 'page';
+    div.contentEditable = 'true';
+    div.spellcheck = true;
+
+    const num = document.createElement('div');
+    num.className = 'page-num';
+    div.appendChild(num);
+
+    // events
+    div.addEventListener('focus', () => {
+      activePage = div;
+      updateStatus();
+    });
+    div.addEventListener('input', updateStatus);
+    div.addEventListener('keydown', handleKeydown);
+
+    workspace.appendChild(div);
+    pages.push(div);
+    updatePageNums();
+
+    div.focus();
+    activePage = div;
+    updateStatus();
+
+    // Move add button after last page
+    workspace.appendChild(document.getElementById('addPageBtn'));
+    return div;
+  }
+
+  function removePage() {
+    if (pages.length <= 1) { alert('En az 1 sayfa olmalı!'); return; }
+    if (!confirm('Bu sayfayı silmek istiyor musunuz?')) return;
+    const idx = pages.indexOf(activePage);
+    activePage.remove();
+    pages.splice(idx, 1);
+    updatePageNums();
+    const newIdx = Math.min(idx, pages.length - 1);
+    pages[newIdx].focus();
+    updateStatus();
+  }
+
+  function updatePageNums() {
+    pages.forEach((p, i) => {
+      const num = p.querySelector('.page-num');
+      if (num) num.textContent = `— ${i + 1} —`;
+    });
+    document.getElementById('totalPgNum').textContent = pages.length;
+  }
+
+  function handleKeydown(e) {
+    // Tab → indent
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      document.execCommand('insertText', false, '    ');
+    }
+  }
+
+  // ── Formatting ──
+  function fmt(cmd) {
+    document.execCommand(cmd, false, null);
+    updateFormatBtns();
+  }
+
+  function applyFont(val) {
+    document.execCommand('fontName', false, val);
+  }
+
+  function applySize(val) {
+    // execCommand fontSize only accepts 1-7; use wrapper span
+    const sel = window.getSelection();
+    if (!sel.rangeCount || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontSize = val;
+    range.surroundContents(span);
+  }
+
+  function applyTextColor(val) {
+    document.getElementById('textColorSwatch').style.background = val;
+    document.execCommand('foreColor', false, val);
+  }
+
+  function applyBgColor(val) {
+    document.getElementById('bgColorSwatch').style.background = val;
+    document.execCommand('hiliteColor', false, val);
+  }
+
+  function applyHeading(tag) {
+    if (!tag) return;
+    document.execCommand('formatBlock', false, tag);
+  }
+
+  function updateFormatBtns() {
+    ['bold','italic','underline','strikeThrough'].forEach(cmd => {
+      const el = document.getElementById(cmd.toLowerCase().replace('strikethrough','strike') + 'Btn');
+      if (el) el.classList.toggle('active', document.queryCommandState(cmd));
+    });
+    // fix IDs
+    document.getElementById('boldBtn')?.classList.toggle('active', document.queryCommandState('bold'));
+    document.getElementById('italicBtn')?.classList.toggle('active', document.queryCommandState('italic'));
+    document.getElementById('underlineBtn')?.classList.toggle('active', document.queryCommandState('underline'));
+    document.getElementById('strikeBtn')?.classList.toggle('active', document.queryCommandState('strikeThrough'));
+  }
+
+  document.addEventListener('selectionchange', updateFormatBtns);
+
+  // ── Status ──
+  function updateStatus() {
+    const idx = pages.indexOf(activePage) + 1;
+    document.getElementById('activePgNum').textContent = idx;
+    document.getElementById('totalPgNum').textContent = pages.length;
+
+    let allText = pages.map(p => p.innerText || '').join(' ');
+    const words = allText.trim() ? allText.trim().split(/\s+/).length : 0;
+    const chars = allText.replace(/\n/g,'').length;
+    document.getElementById('wordCount').textContent = words;
+    document.getElementById('charCount').textContent = chars;
+  }
+
+  // ── PDF EXPORT (html2canvas per page) ──
+  async function exportPDF() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('show');
+
+    await new Promise(r => setTimeout(r, 80)); // let UI update
+
+    try {
+      const { jsPDF } = window.jspdf;
+
+      // A4 dimensions in points
+      const PDF_W = 595.28;
+      const PDF_H = 841.89;
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+
+        // Temporarily remove the page number overlay for cleaner canvas
+        const numEl = page.querySelector('.page-num');
+        const savedNumText = numEl ? numEl.style.display : '';
+        if (numEl) numEl.style.display = 'none';
+
+        // Hide focus outline
+        const prevOutline = page.style.outline;
+        page.style.outline = 'none';
+        page.style.boxShadow = 'none';
+
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#faf9f7',
+          logging: false,
+          windowWidth: page.scrollWidth,
+          windowHeight: page.scrollHeight,
         });
 
-        function addNewPage() {
-            pageCount++;
-            const newPage = document.createElement('div');
-            newPage.className = 'page-container';
-            newPage.id = `page-${pageCount}`;
-            newPage.onclick = function(e) { 
-                if(e.target === this) selectPage(this); 
-            };
-            newPage.innerHTML = `<span class="page-label no-print">Səhifə ${pageCount}</span>`;
-            document.getElementById('document-content').appendChild(newPage);
-            selectPage(newPage);
-            newPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        // Restore
+        if (numEl) numEl.style.display = savedNumText;
+        page.style.outline = prevOutline;
+        page.style.boxShadow = '';
 
-        function addElement(type, data = null) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'element-wrapper active';
-            wrapper.style.left = '40mm';
-            wrapper.style.top = '40mm';
+        const imgData = canvas.toDataURL('image/jpeg', 0.97);
+        const imgW = PDF_W;
+        const imgH = (canvas.height / canvas.width) * imgW;
 
-            const toolbar = document.createElement('div');
-            toolbar.className = 'toolbar-inline no-print';
-            
-            let content;
-            if (type === 'text') {
-                toolbar.innerHTML = `
-                    <button onclick="format('bold')" class="text-white px-2 hover:bg-slate-700 rounded font-bold">B</button>
-                    <button onclick="format('italic')" class="text-white px-2 hover:bg-slate-700 rounded italic">I</button>
-                    <button onclick="updateSize(2)" class="text-white px-2 hover:bg-slate-700 rounded text-lg">A+</button>
-                    <button onclick="updateSize(-2)" class="text-white px-2 hover:bg-slate-700 rounded text-sm">A-</button>
-                    <input type="color" onchange="updateColor(this)" class="w-6 h-6 bg-transparent border-none cursor-pointer">
-                    <div class="w-[1px] h-4 bg-slate-600 mx-1"></div>
-                    <button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded">🗑️</button>
-                `;
-                content = document.createElement('div');
-                content.contentEditable = true;
-                content.innerText = 'Mətni bura yazın...';
-                content.style.fontSize = '20px';
-                content.style.minWidth = '180px';
-                content.style.outline = 'none';
-                content.className = 'text-content';
-            } else {
-                toolbar.innerHTML = `<button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded">🗑️ Şəkli Sil</button>`;
-                content = document.createElement('img');
-                content.src = data;
-                content.className = 'w-full h-auto pointer-events-none select-none';
-                wrapper.style.width = '250px';
-            }
+        if (i > 0) pdf.addPage();
 
-            const handle = document.createElement('div');
-            handle.className = 'resize-handle no-print';
+        // If content shorter than A4 height, just place it; else scale to fit
+        const finalH = Math.min(imgH, PDF_H);
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgW, finalH);
 
-            wrapper.appendChild(toolbar);
-            wrapper.appendChild(content);
-            wrapper.appendChild(handle);
-            
-            if (activeEl) activeEl.classList.remove('active');
-            activeEl = wrapper;
-            
-            initDragAndResize(wrapper);
-            lastSelectedPage.appendChild(wrapper);
-            
-            if(type === 'text') {
-                setTimeout(() => content.focus(), 10);
-            }
-        }
+        // Add page number
+        pdf.setFont('Helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(160, 155, 145);
+        pdf.text(`— ${i + 1} —`, PDF_W / 2, PDF_H - 20, { align: 'center' });
+      }
 
-        function handleImage(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => addElement('image', ev.target.result);
-                reader.readAsDataURL(file);
-                e.target.value = '';
-            }
-        }
+      // Filename from first page h1 or default
+      const h1 = pages[0].querySelector('h1');
+      const name = h1 ? h1.innerText.trim().slice(0, 40).replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ\s]/g,'').trim() || 'dokuman' : 'dokuman';
+      pdf.save(`${name}.pdf`);
 
-        function format(cmd) { document.execCommand(cmd, false, null); }
+    } catch(err) {
+      alert('PDF oluşturulurken hata: ' + err.message);
+      console.error(err);
+    }
 
-        function updateSize(delta) {
-            if (!activeEl) return;
-            const textEl = activeEl.querySelector('.text-content');
-            if (textEl) {
-                const current = parseInt(window.getComputedStyle(textEl).fontSize);
-                textEl.style.fontSize = (current + delta) + 'px';
-            }
-        }
+    overlay.classList.remove('show');
+  }
 
-        function updateColor(input) {
-            if (!activeEl) return;
-            const textEl = activeEl.querySelector('.text-content');
-            if (textEl) textEl.style.color = input.value;
-        }
+  // ── Keyboard shortcuts ──
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      addPage();
+    }
+  });
 
-        function initDragAndResize(el) {
-            let isDragging = false;
-            let isResizing = false;
-            let startX, startY, startW, startH, startLeft, startTop;
+  // Move addPageBtn out of workspace init position
+  document.getElementById('workspace').appendChild(document.getElementById('addPageBtn'));
 
-            el.addEventListener('mousedown', (e) => {
-                if (e.target.classList.contains('resize-handle')) {
-                    isResizing = true;
-                    e.preventDefault();
-                } else if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-                    isDragging = true;
-                    selectPage(el.parentElement);
-                } else { return; }
-
-                startX = e.clientX; startY = e.clientY;
-                startW = el.offsetWidth; startH = el.offsetHeight;
-                startLeft = el.offsetLeft; startTop = el.offsetTop;
-
-                const moveHandler = (me) => {
-                    const dx = me.clientX - startX;
-                    const dy = me.clientY - startY;
-                    if (isResizing) {
-                        el.style.width = Math.max(50, startW + dx) + 'px';
-                    } else if (isDragging) {
-                        el.style.left = (startLeft + dx) + 'px';
-                        el.style.top = (startTop + dy) + 'px';
-                    }
-                };
-
-                const upHandler = () => {
-                    isDragging = false; isResizing = false;
-                    window.removeEventListener('mousemove', moveHandler);
-                    window.removeEventListener('mouseup', upHandler);
-                };
-
-                window.addEventListener('mousemove', moveHandler);
-                window.addEventListener('mouseup', upHandler);
-            });
-        }
-
-        async function downloadPDF() {
-            const btn = document.getElementById('downloadBtn');
-            const originalText = btn.innerText;
-            btn.innerText = "Hazırlanır...";
-            btn.disabled = true;
-
-            if (activeEl) activeEl.classList.remove('active');
-            document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active-page'));
-            
-            const pages = document.querySelectorAll('.page-container');
-            
-            // html2pdf-in səhifələri avtomatik bölməsi yerinə hər səhifəni dəqiq kəsən tənzimləmə
-            const opt = {
-                margin: 0,
-                filename: 'senet_redakte.pdf',
-                image: { type: 'jpeg', quality: 1 },
-                html2canvas: { 
-                    scale: 2, 
-                    useCORS: true,
-                    letterRendering: true,
-                    scrollY: 0,
-                    windowWidth: document.documentElement.offsetWidth
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: ['css', 'legacy'] } // CSS kəsimlərinə önəm ver
-            };
-
-            // Hər səhifə konteynerinə PDF kəsimi əlavə et
-            pages.forEach((p) => {
-                p.style.margin = '0';
-                p.style.pageBreakAfter = 'always';
-            });
-
-            try {
-                // html2pdf obyekti yaradılır
-                const worker = html2pdf().set(opt).from(document.getElementById('document-content'));
-                await worker.save();
-            } catch (error) {
-                console.error("PDF yaratma xətası:", error);
-            } finally {
-                // Səhifə stillərini ekranda görünməsi üçün bərpa et
-                pages.forEach(p => {
-                    p.style.margin = '0 0 20px 0';
-                    p.style.pageBreakAfter = 'auto';
-                });
-                if(lastSelectedPage) lastSelectedPage.classList.add('active-page');
-                btn.innerText = originalText;
-                btn.disabled = false;
-            }
-        }
-    </script>
+  init();
+</script>
 </body>
 </html>
