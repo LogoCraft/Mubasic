@@ -15,27 +15,29 @@
             background-color: #f0f2f5;
             overflow-x: hidden;
             margin: 0;
+            padding: 0;
         }
         #document-content {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 40px 0;
+            padding: 20px 0;
         }
         .page-container {
             width: var(--a4-width);
-            min-height: var(--a4-height);
+            height: var(--a4-height); /* Sabit hündürlük A4 üçün vacibdir */
             background: white;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             position: relative;
-            padding: 20mm;
-            border: 2px solid transparent;
+            padding: 0; /* Padding-i daxili elementlərə buraxırıq */
+            border: 1px solid transparent;
             transition: all 0.3s;
+            overflow: hidden; /* Səhifədən kənara çıxanları gizlə */
         }
         /* Aktiv səhifəni vizual olaraq göstər */
         .page-container.active-page {
-            border-color: #3b82f6;
+            border: 2px solid #3b82f6;
             box-shadow: 0 0 25px rgba(59, 130, 246, 0.2);
         }
         .element-wrapper {
@@ -44,10 +46,11 @@
             border: 1px solid transparent;
             padding: 5px;
             z-index: 10;
+            box-sizing: border-box;
         }
         .element-wrapper:hover, .element-wrapper.active {
             border: 1px dashed #3b82f6;
-            background: rgba(59, 130, 246, 0.05);
+            background: rgba(59, 130, 246, 0.02);
         }
         .toolbar-inline {
             position: absolute;
@@ -83,7 +86,7 @@
         .page-label {
             position: absolute;
             left: -80px;
-            top: 20px;
+            top: 10px;
             background: #64748b;
             color: white;
             padding: 4px 12px;
@@ -93,6 +96,7 @@
         }
         @media print {
             .no-print { display: none !important; }
+            #document-content { padding: 0; }
             .page-container { margin: 0; box-shadow: none; border: none; }
             body { background: white; }
         }
@@ -143,7 +147,6 @@
         let lastSelectedPage = document.getElementById('page-1');
         let activeEl = null;
 
-        // Səhifəni seçmək funksiyası
         function selectPage(pageEl) {
             document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active-page'));
             pageEl.classList.add('active-page');
@@ -151,10 +154,9 @@
             document.getElementById('active-page-status').innerText = `Səhifə ${pageEl.id.split('-')[1]} aktivdir`;
         }
 
-        // Elementi seçmək (sürükləmə üçün)
         document.addEventListener('mousedown', (e) => {
             const wrapper = e.target.closest('.element-wrapper');
-            if (activeEl) activeEl.classList.remove('active');
+            if (activeEl && !e.target.closest('.toolbar-inline')) activeEl.classList.remove('active');
             if (wrapper) {
                 activeEl = wrapper;
                 activeEl.classList.add('active');
@@ -166,11 +168,12 @@
             const newPage = document.createElement('div');
             newPage.className = 'page-container';
             newPage.id = `page-${pageCount}`;
-            newPage.onclick = function() { selectPage(this); };
+            newPage.onclick = function(e) { 
+                if(e.target === this) selectPage(this); 
+            };
             newPage.innerHTML = `<span class="page-label no-print">Səhifə ${pageCount}</span>`;
             document.getElementById('document-content').appendChild(newPage);
             
-            // Yeni səhifəni avtomatik seç və ora sürüş
             selectPage(newPage);
             newPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -178,10 +181,8 @@
         function addElement(type, data = null) {
             const wrapper = document.createElement('div');
             wrapper.className = 'element-wrapper active';
-            
-            // Həmişə aktiv səhifənin yuxarısında (padding-i nəzərə alaraq) yerləşdir
-            wrapper.style.left = '50px';
-            wrapper.style.top = '50px';
+            wrapper.style.left = '40mm';
+            wrapper.style.top = '40mm';
 
             const toolbar = document.createElement('div');
             toolbar.className = 'toolbar-inline no-print';
@@ -225,7 +226,6 @@
             initDragAndResize(wrapper);
             lastSelectedPage.appendChild(wrapper);
             
-            // Əgər mətndirsə birbaşa fokusla
             if(type === 'text') {
                 setTimeout(() => content.focus(), 10);
             }
@@ -237,7 +237,7 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => addElement('image', ev.target.result);
                 reader.readAsDataURL(file);
-                e.target.value = ''; // Yenidən eyni şəkli seçmək üçün təmizlə
+                e.target.value = '';
             }
         }
 
@@ -271,7 +271,6 @@
                     e.preventDefault();
                 } else if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
                     isDragging = true;
-                    // Sürükləyəndə avtomatik həmin səhifəni də seç
                     selectPage(el.parentElement);
                 } else {
                     return;
@@ -313,22 +312,37 @@
             document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active-page'));
             
             const element = document.getElementById('document-content');
+            
+            // PDF tənzimləmələri
             const opt = {
                 margin: 0,
                 filename: 'senet_redakte.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
+                image: { type: 'jpeg', quality: 1 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true,
+                    letterRendering: true,
+                    scrollY: 0
+                },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: ['css', 'legacy'] }
+                pagebreak: { mode: 'css' }
             };
 
             const pages = document.querySelectorAll('.page-container');
-            pages.forEach((p, i) => { if(i > 0) p.style.pageBreakBefore = 'always'; });
+            pages.forEach((p, i) => {
+                p.style.pageBreakAfter = 'always';
+                p.style.pageBreakInside = 'avoid';
+                p.style.display = 'block';
+            });
 
             try {
+                // Generasiya zamanı səhifələri tam göstərmək üçün
                 await html2pdf().set(opt).from(element).save();
+            } catch (error) {
+                console.error("PDF yaratma xətası:", error);
             } finally {
-                pages.forEach(p => p.style.pageBreakBefore = 'auto');
+                // Stilləri bərpa et
+                pages.forEach(p => p.style.pageBreakAfter = 'auto');
                 if(lastSelectedPage) lastSelectedPage.classList.add('active-page');
             }
         }
