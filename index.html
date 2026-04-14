@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Redaktor Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
@@ -25,17 +27,17 @@
         }
         .page-container {
             width: var(--a4-width);
-            height: var(--a4-height); /* Sabit hündürlük A4 üçün vacibdir */
+            height: var(--a4-height);
             background: white;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             margin-bottom: 20px;
             position: relative;
-            padding: 0; /* Padding-i daxili elementlərə buraxırıq */
+            padding: 0;
             border: 1px solid transparent;
             transition: all 0.3s;
-            overflow: hidden; /* Səhifədən kənara çıxanları gizlə */
+            overflow: hidden;
+            box-sizing: border-box;
         }
-        /* Aktiv səhifəni vizual olaraq göstər */
         .page-container.active-page {
             border: 2px solid #3b82f6;
             box-shadow: 0 0 25px rgba(59, 130, 246, 0.2);
@@ -96,15 +98,13 @@
         }
         @media print {
             .no-print { display: none !important; }
-            #document-content { padding: 0; }
+            #document-content { padding: 0; margin: 0; }
             .page-container { margin: 0; box-shadow: none; border: none; }
-            body { background: white; }
         }
     </style>
 </head>
 <body class="text-slate-800">
 
-    <!-- Ana Menu -->
     <nav class="no-print bg-white border-b border-slate-200 p-3 sticky top-0 z-[1000] flex items-center justify-between shadow-sm px-10">
         <div class="flex items-center gap-6">
             <div class="bg-blue-600 text-white p-2 rounded shadow-inner">
@@ -129,14 +129,13 @@
 
         <div class="flex items-center gap-4">
             <span id="active-page-status" class="text-xs font-bold text-slate-400 uppercase tracking-widest">Səhifə 1 aktivdir</span>
-            <button onclick="downloadPDF()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition flex items-center gap-2">
+            <button onclick="downloadPDF()" id="downloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition flex items-center gap-2">
                 💾 PDF Yüklə
             </button>
         </div>
     </nav>
 
     <div id="document-content">
-        <!-- İlk Səhifə -->
         <div class="page-container active-page" id="page-1" onclick="selectPage(this)">
             <span class="page-label no-print">Səhifə 1</span>
         </div>
@@ -173,7 +172,6 @@
             };
             newPage.innerHTML = `<span class="page-label no-print">Səhifə ${pageCount}</span>`;
             document.getElementById('document-content').appendChild(newPage);
-            
             selectPage(newPage);
             newPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -241,9 +239,7 @@
             }
         }
 
-        function format(cmd) {
-            document.execCommand(cmd, false, null);
-        }
+        function format(cmd) { document.execCommand(cmd, false, null); }
 
         function updateSize(delta) {
             if (!activeEl) return;
@@ -272,21 +268,15 @@
                 } else if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
                     isDragging = true;
                     selectPage(el.parentElement);
-                } else {
-                    return;
-                }
+                } else { return; }
 
-                startX = e.clientX;
-                startY = e.clientY;
-                startW = el.offsetWidth;
-                startH = el.offsetHeight;
-                startLeft = el.offsetLeft;
-                startTop = el.offsetTop;
+                startX = e.clientX; startY = e.clientY;
+                startW = el.offsetWidth; startH = el.offsetHeight;
+                startLeft = el.offsetLeft; startTop = el.offsetTop;
 
                 const moveHandler = (me) => {
                     const dx = me.clientX - startX;
                     const dy = me.clientY - startY;
-
                     if (isResizing) {
                         el.style.width = Math.max(50, startW + dx) + 'px';
                     } else if (isDragging) {
@@ -296,8 +286,7 @@
                 };
 
                 const upHandler = () => {
-                    isDragging = false;
-                    isResizing = false;
+                    isDragging = false; isResizing = false;
                     window.removeEventListener('mousemove', moveHandler);
                     window.removeEventListener('mouseup', upHandler);
                 };
@@ -308,12 +297,17 @@
         }
 
         async function downloadPDF() {
+            const btn = document.getElementById('downloadBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Hazırlanır...";
+            btn.disabled = true;
+
             if (activeEl) activeEl.classList.remove('active');
             document.querySelectorAll('.page-container').forEach(p => p.classList.remove('active-page'));
             
-            const element = document.getElementById('document-content');
+            const pages = document.querySelectorAll('.page-container');
             
-            // PDF tənzimləmələri
+            // html2pdf-in səhifələri avtomatik bölməsi yerinə hər səhifəni dəqiq kəsən tənzimləmə
             const opt = {
                 margin: 0,
                 filename: 'senet_redakte.pdf',
@@ -322,28 +316,34 @@
                     scale: 2, 
                     useCORS: true,
                     letterRendering: true,
-                    scrollY: 0
+                    scrollY: 0,
+                    windowWidth: document.documentElement.offsetWidth
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: 'css' }
+                pagebreak: { mode: ['css', 'legacy'] } // CSS kəsimlərinə önəm ver
             };
 
-            const pages = document.querySelectorAll('.page-container');
-            pages.forEach((p, i) => {
+            // Hər səhifə konteynerinə PDF kəsimi əlavə et
+            pages.forEach((p) => {
+                p.style.margin = '0';
                 p.style.pageBreakAfter = 'always';
-                p.style.pageBreakInside = 'avoid';
-                p.style.display = 'block';
             });
 
             try {
-                // Generasiya zamanı səhifələri tam göstərmək üçün
-                await html2pdf().set(opt).from(element).save();
+                // html2pdf obyekti yaradılır
+                const worker = html2pdf().set(opt).from(document.getElementById('document-content'));
+                await worker.save();
             } catch (error) {
                 console.error("PDF yaratma xətası:", error);
             } finally {
-                // Stilləri bərpa et
-                pages.forEach(p => p.style.pageBreakAfter = 'auto');
+                // Səhifə stillərini ekranda görünməsi üçün bərpa et
+                pages.forEach(p => {
+                    p.style.margin = '0 0 20px 0';
+                    p.style.pageBreakAfter = 'auto';
+                });
                 if(lastSelectedPage) lastSelectedPage.classList.add('active-page');
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
     </script>
