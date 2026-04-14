@@ -1,432 +1,307 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="az">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobil Kod Düzenleyici</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <title>PDF Redaktor Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
+        :root {
+            --a4-width: 210mm;
+            --a4-height: 297mm;
+        }
         body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #0f172a;
-            color: #e2e8f0;
+            background-color: #f0f2f5;
+            overflow-x: hidden;
+        }
+        #document-content {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-        }
-        .container {
-            display: flex;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-        .sidebar {
-            width: 300px;
-            background-color: #1e293b;
-            border-right: 1px solid #334155;
-            flex-shrink: 0;
-            transition: transform 0.3s ease-in-out;
-            transform: translateX(-100%);
-            z-index: 20;
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            flex-direction: column;
-            padding: 1rem;
-        }
-        @media (min-width: 768px) {
-            .sidebar {
-                transform: translateX(0);
-                position: relative;
-            }
-        }
-        .sidebar.active {
-            transform: translateX(0);
-        }
-        .editor-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .file-item {
-            cursor: pointer;
-            padding: 0.75rem 1rem;
-            transition: background-color 0.2s;
-            display: flex;
             align-items: center;
-            justify-content: space-between;
-            border-radius: 0.5rem;
+            padding: 40px 0;
         }
-        .file-item:hover {
-            background-color: #334155;
-        }
-        .file-item.active {
-            background-color: #475569;
-            font-weight: bold;
-        }
-        .icon {
-            margin-right: 0.5rem;
-        }
-        .delete-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #ef4444;
-            padding: 0.5rem;
-            transition: color 0.2s;
-        }
-        .delete-btn:hover {
-            color: #fca5a5;
-        }
-        .bottom-bar {
-            background-color: #1e293b;
-            border-top: 1px solid #334155;
-            display: flex;
-            justify-content: center;
-            padding: 0.5rem;
-        }
-        .tab-bar {
-            display: flex;
-            background-color: #1e293b;
-            border-bottom: 1px solid #334155;
-        }
-        .tab {
-            padding: 1rem 2rem;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            font-weight: 600;
-        }
-        .tab:hover {
-            background-color: #334155;
-        }
-        .tab.active {
-            border-bottom: 2px solid #3b82f6;
-            color: #3b82f6;
-        }
-        .editor-container {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
+        .page-container {
+            width: var(--a4-width);
+            min-height: var(--a4-height);
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
             position: relative;
+            padding: 20mm;
         }
-        .editor-tab-content {
+        .element-wrapper {
             position: absolute;
-            top: 0;
+            cursor: move;
+            border: 1px solid transparent;
+            padding: 5px;
+            user-select: none;
+        }
+        .element-wrapper:hover, .element-wrapper.active {
+            border: 1px dashed #3b82f6;
+        }
+        .toolbar-inline {
+            position: absolute;
+            top: -45px;
             left: 0;
-            width: 100%;
-            height: 100%;
+            background: #1e293b;
+            border-radius: 6px;
+            padding: 5px 10px;
+            display: none;
+            gap: 8px;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .element-wrapper:hover .toolbar-inline, .element-wrapper.active .toolbar-inline {
+            display: flex;
+        }
+        .resize-handle {
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            border: 2px solid white;
+            position: absolute;
+            bottom: -6px;
+            right: -6px;
+            cursor: nwse-resize;
+            border-radius: 50%;
             display: none;
         }
-        .editor-tab-content.active {
-            display: flex;
+        .element-wrapper:hover .resize-handle, .element-wrapper.active .resize-handle {
+            display: block;
         }
-        #html-editor, #js-editor {
-            flex-grow: 1;
-            width: 100%;
-            background-color: #0f172a;
-            color: #f8fafc;
-            font-family: monospace;
-            padding: 1rem;
-            resize: none;
-            outline: none;
-            border: none;
-            line-height: 1.5;
+        .page-label {
+            position: absolute;
+            left: -60px;
+            top: 20px;
+            background: #94a3b8;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
         }
-        #preview {
-            flex-grow: 1;
-            background: white;
-            border-top: 1px solid #334155;
-        }
-        #preview-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
+        @media print {
+            .no-print { display: none !important; }
+            .page-container { margin: 0; box-shadow: none; }
+            body { background: white; }
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 flex flex-col h-screen">
+<body class="text-slate-800">
 
-    <!-- Top Bar - Title and Sidebar Toggle -->
-    <header class="bg-gray-800 p-2 flex items-center shadow-md z-10">
-        <button id="toggle-sidebar" class="p-2 rounded-lg hover:bg-gray-700 focus:outline-none md:hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
-            </svg>
-        </button>
-        <h1 class="text-xl font-bold ml-2">Mobil Kod Düzenleyici</h1>
-    </header>
-
-    <div class="container relative">
-        <!-- Sidebar for File Explorer -->
-        <aside id="sidebar" class="sidebar absolute md:relative flex flex-col p-4 z-10 top-0 left-0 bottom-0">
-            <h2 class="text-lg font-semibold mb-4">Dosyalar</h2>
-            <div id="file-list" class="flex-grow overflow-y-auto"></div>
-        </aside>
-
-        <!-- Main Editor Area -->
-        <main class="editor-area">
-            <!-- Tab Bar for HTML and JS -->
-            <div class="tab-bar">
-                <div id="html-tab" class="tab active">HTML</div>
-                <div id="js-tab" class="tab">JavaScript</div>
+    <!-- Ana Menu -->
+    <nav class="no-print bg-white border-b border-slate-200 p-3 sticky top-0 z-[1000] flex items-center justify-between shadow-sm px-10">
+        <div class="flex items-center gap-6">
+            <div class="bg-blue-600 text-white p-2 rounded shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
             </div>
-            
-            <div class="editor-container">
-                <!-- HTML Editor -->
-                <div id="html-editor-container" class="editor-tab-content active">
-                    <textarea id="html-editor" spellcheck="false" class="bg-gray-900 text-gray-200 p-4"></textarea>
-                </div>
-                <!-- JavaScript Editor -->
-                <div id="js-editor-container" class="editor-tab-content">
-                    <textarea id="js-editor" spellcheck="false" class="bg-gray-900 text-gray-200 p-4"></textarea>
-                </div>
+            <div class="flex gap-2">
+                <button onclick="addElement('text')" class="flex items-center gap-2 hover:bg-slate-100 px-4 py-2 rounded-md transition">
+                    <span class="text-xl">T</span> Mətn
+                </button>
+                <button onclick="document.getElementById('imgInput').click()" class="flex items-center gap-2 hover:bg-slate-100 px-4 py-2 rounded-md transition">
+                    <span>🖼️</span> Şəkil
+                </button>
+                <input type="file" id="imgInput" class="hidden" accept="image/*" onchange="handleImage(event)">
             </div>
-
-            <!-- Preview -->
-            <div id="preview">
-                <iframe id="preview-frame"></iframe>
-            </div>
-        </main>
-    </div>
-
-    <!-- Message box -->
-    <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <div id="message-text" class="text-center text-lg mb-4"></div>
-            <input type="text" id="prompt-input" class="w-full p-2 mb-4 rounded bg-gray-700 text-white hidden" placeholder="Dosya adını girin...">
-            <div class="flex justify-center space-x-4">
-                <button id="ok-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none hidden">Tamam</button>
-                <button id="confirm-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 focus:outline-none hidden">Onayla</button>
-            </div>
+            <div class="h-8 w-[1px] bg-slate-200"></div>
+            <button onclick="addNewPage()" class="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-md transition font-medium">
+                📄 Yeni Səhifə
+            </button>
         </div>
-    </div>
 
-    <!-- Bottom Bar -->
-    <div class="bottom-bar">
-        <div class="flex items-center space-x-4">
-            <button id="new-file-btn" class="p-3 rounded-lg bg-gray-700 hover:bg-gray-600 focus:outline-none flex items-center">
-                Yeni Dosya
-            </button>
-            <button id="save-btn" class="p-3 rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none flex items-center">
-                Kaydet
-            </button>
-            <button id="run-btn" class="p-3 rounded-lg bg-green-600 hover:bg-green-700 focus:outline-none flex items-center">
-                Çalıştır
-            </button>
+        <button onclick="downloadPDF()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg transition flex items-center gap-2">
+            💾 PDF Yüklə
+        </button>
+    </nav>
+
+    <div id="document-content">
+        <!-- İlk Səhifə -->
+        <div class="page-container" id="page-1">
+            <span class="page-label no-print">Səhifə 1</span>
+            <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none select-none">
+                <h1 class="text-6xl font-black rotate-45 border-8 border-slate-900 p-10">DRAFT</h1>
+            </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const htmlEditor = document.getElementById('html-editor');
-            const jsEditor = document.getElementById('js-editor');
-            const htmlTab = document.getElementById('html-tab');
-            const jsTab = document.getElementById('js-tab');
-            const htmlEditorContainer = document.getElementById('html-editor-container');
-            const jsEditorContainer = document.getElementById('js-editor-container');
-            const fileListContainer = document.getElementById('file-list');
-            const newFileBtn = document.getElementById('new-file-btn');
-            const saveBtn = document.getElementById('save-btn');
-            const runBtn = document.getElementById('run-btn');
-            const sidebar = document.getElementById('sidebar');
-            const toggleSidebarBtn = document.getElementById('toggle-sidebar');
-            const previewFrame = document.getElementById('preview-frame');
+        let pageCount = 1;
+        let lastSelectedPage = document.getElementById('page-1');
+        let activeEl = null;
+
+        // Səhifə seçimi
+        document.addEventListener('mousedown', (e) => {
+            const page = e.target.closest('.page-container');
+            if (page) lastSelectedPage = page;
             
-            const messageBox = document.getElementById('message-box');
-            const messageText = document.getElementById('message-text');
-            const promptInput = document.getElementById('prompt-input');
-            const okBtn = document.getElementById('ok-btn');
-            const confirmBtn = document.getElementById('confirm-btn');
-
-            let files = [];
-            let activeFileIndex = -1;
-            let activeTab = 'html';
-
-            const showMessage = (text) => {
-                return new Promise(resolve => {
-                    messageText.textContent = text;
-                    promptInput.classList.add('hidden');
-                    okBtn.classList.remove('hidden');
-                    confirmBtn.classList.add('hidden');
-                    messageBox.classList.remove('hidden');
-                    const handleOk = () => {
-                        messageBox.classList.add('hidden');
-                        okBtn.removeEventListener('click', handleOk);
-                        resolve(true);
-                    };
-                    okBtn.addEventListener('click', handleOk);
-                });
-            };
-
-            const showPrompt = (text, defaultValue = '') => {
-                return new Promise(resolve => {
-                    messageText.textContent = text;
-                    promptInput.value = defaultValue;
-                    promptInput.classList.remove('hidden');
-                    okBtn.classList.add('hidden');
-                    confirmBtn.classList.remove('hidden');
-                    messageBox.classList.remove('hidden');
-                    const handleConfirm = () => {
-                        messageBox.classList.add('hidden');
-                        confirmBtn.removeEventListener('click', handleConfirm);
-                        resolve(promptInput.value);
-                    };
-                    confirmBtn.addEventListener('click', handleConfirm);
-                });
-            };
-
-            const getIconForFile = (filename) => {
-                if (filename.endsWith('.html')) return '📄';
-                if (filename.endsWith('.js') || filename.endsWith('.jsx')) return '🚀';
-                if (filename.endsWith('.py')) return '🐍';
-                if (filename.endsWith('.md')) return '📝';
-                if (filename.endsWith('.css')) return '🎨';
-                return '📁';
-            };
-
-            const loadFilesFromStorage = () => {
-                try {
-                    const storedFiles = localStorage.getItem('code_editor_files');
-                    if (storedFiles) {
-                        files = JSON.parse(storedFiles);
-                    }
-                } catch (e) {
-                    console.error("Dosyalar yüklenirken hata:", e);
-                    files = [];
-                }
-            };
-
-            const saveFilesToStorage = () => {
-                localStorage.setItem('code_editor_files', JSON.stringify(files));
-            };
-
-            const renderFileList = () => {
-                fileListContainer.innerHTML = '';
-                files.forEach((file, index) => {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = `file-item rounded-lg mb-1 ${index === activeFileIndex ? 'active' : ''}`;
-                    fileItem.dataset.index = index;
-                    fileItem.innerHTML = `<span class="icon">${getIconForFile(file.name)}</span> ${file.name}
-                        <button class="delete-btn" data-index="${index}">❌</button>`;
-                    fileListContainer.appendChild(fileItem);
-                });
-            };
-
-            const openFile = (index) => {
-                if (index < 0 || index >= files.length) return;
-                updateActiveFileContent();
-                activeFileIndex = index;
-                const file = files[activeFileIndex];
-                const htmlContentMatch = file.content.match(/<html[\s\S]*>([\s\S]*)<\/html>/);
-                const scriptContentMatch = file.content.match(/<script>([\s\S]*)<\/script>/);
-                htmlEditor.value = htmlContentMatch ? `<html lang="tr">${htmlContentMatch[1]}</html>` : file.content;
-                jsEditor.value = scriptContentMatch ? scriptContentMatch[1] : '';
-                renderFileList();
-                if (window.innerWidth <= 768) sidebar.classList.remove('active');
-            };
-
-            const updateActiveFileContent = () => {
-                if (activeFileIndex > -1) {
-                    const htmlCode = htmlEditor.value;
-                    const jsCode = jsEditor.value;
-                    const combinedCode = htmlCode.replace(/<\/body>/, `<script>${jsCode}<\/script></body>`);
-                    files[activeFileIndex].content = combinedCode;
-                    saveFilesToStorage();
-                }
-            };
-
-            toggleSidebarBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('active');
-            });
-
-            newFileBtn.addEventListener('click', async () => {
-                const newFileName = await showPrompt('Yeni dosya adını girin (ör: script.html):');
-                if (newFileName) {
-                    if (files.some(file => file.name === newFileName)) {
-                        showMessage('Bu isimde dosya var.');
-                        return;
-                    }
-                    const newFileContent = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Yeni</title></head><body><h1>Yeni Dosya</h1></body></html>`;
-                    files.push({ name: newFileName, content: newFileContent });
-                    saveFilesToStorage();
-                    openFile(files.length - 1);
-                }
-            });
-
-            saveBtn.addEventListener('click', () => {
-                if (activeFileIndex > -1) {
-                    updateActiveFileContent();
-                    showMessage('Kaydedildi!');
-                } else {
-                    showMessage('Önce bir dosya aç.');
-                }
-            });
-
-            runBtn.addEventListener('click', () => {
-                if (activeFileIndex > -1) {
-                    updateActiveFileContent();
-                    const combinedCode = files[activeFileIndex].content;
-                    const blob = new Blob([combinedCode], { type: 'text/html' });
-                    const url = URL.createObjectURL(blob);
-                    previewFrame.src = url;
-                } else {
-                    showMessage('Önce bir dosya aç.');
-                }
-            });
-
-            htmlEditor.addEventListener('input', updateActiveFileContent);
-            jsEditor.addEventListener('input', updateActiveFileContent);
-
-            htmlTab.addEventListener('click', () => {
-                htmlTab.classList.add('active');
-                jsTab.classList.remove('active');
-                htmlEditorContainer.classList.add('active');
-                jsEditorContainer.classList.remove('active');
-                activeTab = 'html';
-            });
-
-            jsTab.addEventListener('click', () => {
-                jsTab.classList.add('active');
-                htmlTab.classList.remove('active');
-                jsEditorContainer.classList.add('active');
-                htmlEditorContainer.classList.remove('active');
-                activeTab = 'js';
-            });
-
-            fileListContainer.addEventListener('click', (event) => {
-                const item = event.target.closest('.file-item');
-                if (!item) return;
-                if (event.target.closest('.delete-btn')) {
-                    const index = parseInt(event.target.closest('.delete-btn').dataset.index, 10);
-                    files.splice(index, 1);
-                    saveFilesToStorage();
-                    if (activeFileIndex === index) {
-                        activeFileIndex = -1;
-                        htmlEditor.value = '';
-                        jsEditor.value = '';
-                    } else if (activeFileIndex > index) activeFileIndex--;
-                    renderFileList();
-                } else {
-                    openFile(parseInt(item.dataset.index, 10));
-                }
-            });
-
-            loadFilesFromStorage();
-            if (files.length === 0) {
-                files.push({
-                    name: 'index.html',
-                    content: '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Merhaba Dünya</title></head><body><h1>Salam Dünya!</h1><p>İlk dosyanız.</p></body></html>'
-                });
-                saveFilesToStorage();
+            const wrapper = e.target.closest('.element-wrapper');
+            if (activeEl) activeEl.classList.remove('active');
+            if (wrapper) {
+                activeEl = wrapper;
+                activeEl.classList.add('active');
             }
-            openFile(0);
         });
+
+        function addNewPage() {
+            pageCount++;
+            const newPage = document.createElement('div');
+            newPage.className = 'page-container';
+            newPage.id = `page-${pageCount}`;
+            newPage.innerHTML = `<span class="page-label no-print">Səhifə ${pageCount}</span>`;
+            document.getElementById('document-content').appendChild(newPage);
+            lastSelectedPage = newPage;
+            newPage.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function addElement(type, data = null) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'element-wrapper';
+            wrapper.style.left = '50px';
+            wrapper.style.top = '100px';
+
+            const toolbar = document.createElement('div');
+            toolbar.className = 'toolbar-inline no-print';
+            
+            let content;
+            if (type === 'text') {
+                toolbar.innerHTML = `
+                    <button onclick="format('bold')" class="text-white px-2 hover:bg-slate-700 rounded font-bold">B</button>
+                    <button onclick="format('italic')" class="text-white px-2 hover:bg-slate-700 rounded italic">I</button>
+                    <button onclick="updateSize(2)" class="text-white px-2 hover:bg-slate-700 rounded">A+</button>
+                    <button onclick="updateSize(-2)" class="text-white px-2 hover:bg-slate-700 rounded">A-</button>
+                    <input type="color" onchange="updateColor(this)" class="w-6 h-6 bg-transparent border-none cursor-pointer">
+                    <button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded ml-2">🗑️</button>
+                `;
+                content = document.createElement('div');
+                content.contentEditable = true;
+                content.innerText = 'Bura klikləyib yazın...';
+                content.style.fontSize = '18px';
+                content.style.minWidth = '150px';
+                content.style.outline = 'none';
+                content.className = 'text-content';
+            } else {
+                toolbar.innerHTML = `<button onclick="this.closest('.element-wrapper').remove()" class="text-red-400 px-2 hover:bg-slate-700 rounded">🗑️ Sil</button>`;
+                content = document.createElement('img');
+                content.src = data;
+                content.className = 'w-full h-auto pointer-events-none';
+                wrapper.style.width = '200px';
+            }
+
+            const handle = document.createElement('div');
+            handle.className = 'resize-handle no-print';
+
+            wrapper.appendChild(toolbar);
+            wrapper.appendChild(content);
+            wrapper.appendChild(handle);
+            
+            initDragAndResize(wrapper);
+            lastSelectedPage.appendChild(wrapper);
+        }
+
+        function handleImage(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => addElement('image', ev.target.result);
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Format funksiyaları
+        function format(cmd) {
+            document.execCommand(cmd, false, null);
+        }
+
+        function updateSize(delta) {
+            if (!activeEl) return;
+            const textEl = activeEl.querySelector('.text-content');
+            if (textEl) {
+                const current = parseInt(window.getComputedStyle(textEl).fontSize);
+                textEl.style.fontSize = (current + delta) + 'px';
+            }
+        }
+
+        function updateColor(input) {
+            if (!activeEl) return;
+            const textEl = activeEl.querySelector('.text-content');
+            if (textEl) textEl.style.color = input.value;
+        }
+
+        // Draggable & Resizable Məntiqi (YENİLƏNİB)
+        function initDragAndResize(el) {
+            let isDragging = false;
+            let isResizing = false;
+            let startX, startY, startW, startH, startLeft, startTop;
+
+            el.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('resize-handle')) {
+                    isResizing = true;
+                    e.preventDefault();
+                } else if (e.target.contentEditable !== 'true' && e.target.tagName !== 'BUTTON') {
+                    isDragging = true;
+                } else {
+                    return;
+                }
+
+                startX = e.clientX;
+                startY = e.clientY;
+                startW = el.offsetWidth;
+                startH = el.offsetHeight;
+                startLeft = el.offsetLeft;
+                startTop = el.offsetTop;
+
+                const moveHandler = (me) => {
+                    const dx = me.clientX - startX;
+                    const dy = me.clientY - startY;
+
+                    if (isResizing) {
+                        el.style.width = Math.max(50, startW + dx) + 'px';
+                    } else if (isDragging) {
+                        el.style.left = (startLeft + dx) + 'px';
+                        el.style.top = (startTop + dy) + 'px';
+                    }
+                };
+
+                const upHandler = () => {
+                    isDragging = false;
+                    isResizing = false;
+                    window.removeEventListener('mousemove', moveHandler);
+                    window.removeEventListener('mouseup', upHandler);
+                };
+
+                window.addEventListener('mousemove', moveHandler);
+                window.addEventListener('mouseup', upHandler);
+            });
+        }
+
+        async function downloadPDF() {
+            // Aktiv seleksiyanı təmizlə
+            if (activeEl) activeEl.classList.remove('active');
+            
+            const element = document.getElementById('document-content');
+            const opt = {
+                margin: 0,
+                filename: 'senet.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css', 'legacy'] }
+            };
+
+            const pages = document.querySelectorAll('.page-container');
+            pages.forEach((p, i) => { if(i > 0) p.style.pageBreakBefore = 'always'; });
+
+            try {
+                await html2pdf().set(opt).from(element).save();
+            } finally {
+                pages.forEach(p => p.style.pageBreakBefore = 'auto');
+            }
+        }
     </script>
 </body>
 </html>
